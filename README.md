@@ -1,5 +1,7 @@
 # domstolr
-Tool for extracting text data from decisions handed down by the Norwegian Supreme Court.
+----
+Authors:  Olav Bjørnebekk, Mikael Johannesson
 
+Tool for extracting text data from decisions handed down by the Norwegian Supreme Court. 
 
-This is a test. We must test more on our new branch.
+This is very much a work in progress. If you have any questions or suggestions you are welcome to contact Olav (Olav.Bjornebekk@uib.no).

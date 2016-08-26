@@ -1,2 +1,5 @@
 # domstolr
-Tool for extracting text data from decisions handed down by the Norwegian Supreme Court
+Tool for extracting text data from decisions handed down by the Norwegian Supreme Court.
+
+
+This is a test.

@@ -25,7 +25,7 @@ extract_data_html.sc_after_2003 <- function(.case, data_meta, all_tables) {
     .inner_case_data <- data_frame(avsnitt = gsub("^\\((\\d+)\\).+", "(\\1)", .text),
                                    tekst = gsub("^\\(\\d+\\)", "", .text)) %>%
       mutate(avsnitt = ifelse(avsnitt == tekst, NA, avsnitt),
-             avsnitt = avsnitt = as.numeric(gsub("[^0-9.-]+", "", as.character(avsnitt)))) %>%
+             avsnitt = as.numeric(gsub("[^0-9.-]+", "", as.character(avsnitt)))) %>%
       bind_cols(data_meta)
 
     if (get_references) {

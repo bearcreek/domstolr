@@ -44,16 +44,16 @@ extract_data_html.sc_after_2003 <- function(.case, data_meta, all_tables) {
 ## reference where made
 extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables) {
   get_references <- TRUE
-  nodes <- xml_find_all(.case, ".//p[preceding-sibling::hr]")
+  nodes <- xml_find_all(.case, ".//p[preceding-sibling::hr] | .//table[preceding-sibling::hr]")
   .text <- html_text(nodes)
-  keep <- which(!(gsub(" ", "", .text) == ""))
-
+  keep <- which(!(gsub("_", "", .text) == "") & grepl("\\w", .text))
+  
   .case_data <- data_frame(avsnitt = 1:length(.text[keep]),
                            tekst = .text[keep])
   .case_data <- lapply(1:nrow(.case_data), function(x)
     bind_cols(.case_data[x, ], data_meta)) %>%
     bind_rows()
-
+  
   if (get_references) {
     .case_references <- lapply(1:length(keep), function(x)
       .extract_references(nodes[keep][x], x, "law")) %>%

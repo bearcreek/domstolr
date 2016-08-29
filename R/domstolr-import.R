@@ -10,7 +10,7 @@
 #' @keywords domstolr lovdata
 #' @export
 #' @examples
-#' domstol_data <- domstolr_imøort(directiory = "data/")
+#' domstol_data <- domstolr_import(directiory = "data/")
 #' save(data, file = "domstol_data.RData")
 
 domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", recursive = TRUE,

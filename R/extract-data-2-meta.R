@@ -84,21 +84,35 @@ extract_data_keywords <- function(data_case) {
 
 ## Section: Extract properties of the text, such as which judges
 ## that are speaking.
+
+## First, detect method
+## Method 1: no votes being cast
+## Method 2: votes being cast
+# voting <- as.numeric(grep("Dommer", data$tekst))
+#   if (vote == 1)
+#     class(.case) <- c("non_voting", class(.case))
+#   else
+#     class(.case) <- c("voting", class(.case))
+#   
+#   ## Then use it
+#   UseMethod("...", .case)
+#   }
+
 add_data_section <- function(data_case) {
     data_case <- lapply(unique(data_case$publisert), function(case) {
       data <- data_case[data_case$publisert == case, ]
       data$seksjon <- NA
       if (any(grepl("Jeg er kommet til ", data$tekst))) {
-        data$seksjon[grep("Jeg er kommet til ", data$tekst)] <- "førstevoterende"
+        data$seksjon[grep("Jeg er kommet til ", data$tekst)] <- "Main opinion"
+        data$seksjon[grep("Jeg stemmer for ", data$tekst)] <- "Judgement"
         if (!is.na(data$seksjon[1])) {
-          data$seksjon[1] <- "saksoversikt"
+          data$seksjon[1] <- "Syllabus"
         }
-      } else {
-        data$seksjon[1] <- "førstevoterende"
-      }
-      data$seksjon[grep("Dommer", data$tekst)[grep("Dommer", data$tekst) > 1][1]] <- "annenvoterende"
+      } 
+      ## Voting
+    data$seksjon[grep("Dommer", data$tekst)[grep("Dommer", data$tekst) > 1][1]] <- "annenvoterende"
       data <- fill(data, seksjon)
-      data$seksjon[is.na(data$seksjon)] <- "saksoversikt"
+      data$seksjon[is.na(data$seksjon)] <- "Syllabus"
       return(data)
     })
     data_case <- bind_rows(data_case)

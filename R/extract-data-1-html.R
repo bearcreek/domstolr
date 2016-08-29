@@ -3,14 +3,16 @@
 ## references. The html must be parsed differently depending on when
 ## the case is from.
 extract_data_html <- function(.case, data_meta, all_tables) {
-
+  
+  if (verbose) message(".", appendLF = FALSE)
+  
   ## First find what method to use
   date <- as.numeric(gsub("^(\\d{4}).*", "\\1", data_meta$Dato))
   if (date >= 2003)
     class(.case) <- c("sc_after_2003", class(.case))
   else
     class(.case) <- c("sc_before_2003", class(.case))
-
+  
   ## Then use it
   UseMethod("extract_data_html", .case)
 }
@@ -27,7 +29,7 @@ extract_data_html.sc_after_2003 <- function(.case, data_meta, all_tables) {
       mutate(avsnitt = ifelse(avsnitt == tekst, NA, avsnitt),
              avsnitt = as.numeric(gsub("[^0-9.-]+", "", as.character(avsnitt)))) %>%
       bind_cols(data_meta)
-
+    
     if (get_references) {
       .case_references <- .extract_references(.table, .inner_case_data$avsnitt, "law")
     } else {
@@ -46,7 +48,25 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables) {
   get_references <- TRUE
   nodes <- xml_find_all(.case, ".//p[preceding-sibling::hr] | .//table[preceding-sibling::hr]")
   .text <- html_text(nodes)
-  keep <- which(!(gsub("_", "", .text) == "") & grepl("\\w", .text))
+  
+  
+  keep <- which(!(gsub("_", "", .text) == "") & grepl("\\w", .text) & !grepl("^Side *\\d+.*", .text))
+  
+  # ta vekk sidetall + kollapse avsnitt
+  # page_ind <- grep("^Side *\\d+.*", .text)
+  # if (length(page_ind) >= 1) {
+  #   tt <- data_frame(text = .text, merge = 1:length(.text))  
+  #   to_merge <- lapply(page_ind, function(x) c(x - 1, x + 1))
+  #   tt <- tt[-c(page_ind), ] 
+  #   for (x in 1:length(to_merge)) {
+  #     tt$merge[to_merge[[x]][2]] <- to_merge[[x]][1]
+  #   }
+  #   tt <- tt %>% 
+  #     group_by(merge) %>% 
+  #     summarize(text = paste0(text, collapse = "")) %>% 
+  #     ungroup()
+  # }
+  # 
   
   .case_data <- data_frame(avsnitt = 1:length(.text[keep]),
                            tekst = .text[keep])
@@ -72,7 +92,7 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables) {
     xml_find_all(".//a[preceding-sibling::span]")
   ref_text <- html_text(node)
   ref_link <- html_attr(node, "href")
-
+  
   if (type == "law") {
     ## In-text references to prework
     ref_link_pre <- ref_link[grep("/forarbeid/", ref_link)]
@@ -120,11 +140,11 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables) {
     } else {
       ref_law <- NULL
     }
-      ref <- bind_rows(ref_pre, ref_reg, ref_law)
+    ref <- bind_rows(ref_pre, ref_reg, ref_law)
     return(ref)
-
+    
   } else if (type == "decision") {
-
+    
     ## In-text references for decisions
     ref_link_dec <- ref_link[grep("/avgjorelse/", ref_link)]
     if (length(ref_link_dec) > 0) {
@@ -134,10 +154,10 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables) {
                             tekst = ref_text[grep("/avgjorelse/", ref_link)],
                             link = ref_link_dec[grep("/avgjorelse/", ref_link)]) %>%
         mutate(ref_avsnitt = ifelse(sak == ref_avsnitt, NA, ref_avsnitt))
-        } else {
-          ref_dec <- NULL
-        }
-      return(ref_dec)
+    } else {
+      ref_dec <- NULL
+    }
+    return(ref_dec)
   }
 }
 

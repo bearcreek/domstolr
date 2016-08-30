@@ -22,28 +22,26 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
     if (length(file) == 0) stop("Unable to find any files.")
   }
   
-  if (verbose) message(paste0("Importing ", length(file), " files")
-                       
-                       data_all <- lapply(file, extract_data, meta_only = meta_only, verbose = verbose)
-                       
-                       if (meta_only) {
-                         out <- as.data.frame(bind_rows(data_all))
-                         class(out) <- c("data.frame", "domstolr")
-                         return(out)
-                       }
-                       
-                       out <- lapply(data_all, function(x) x$data_case) %>%
-                         bind_rows() %>%
-                         as.data.frame()
-                       
-                       data_references <- lapply(data_all, function(x) x[[2]])
-                       meta_data <- lapply(1:length(data_references[[1]]), function(x) lapply(data_references, function(y) y[[x]]))
-                       meta_data <- lapply(meta_data, function(x) as.data.frame(bind_rows(x)))
-                       names(meta_data) <- names(data_references[[1]])
-                       attr(out, "meta_data") <- meta_data
-                       
-                       class(out) <- c("data.frame", "domstolr")
-                       return(out)
+   data_all <- lapply(file, extract_data, meta_only = meta_only, verbose = verbose)
+   
+   if (meta_only) {
+     out <- as.data.frame(bind_rows(data_all))
+     class(out) <- c("data.frame", "domstolr")
+     return(out)
+   }
+   
+   out <- lapply(data_all, function(x) x$data_case) %>%
+     bind_rows() %>%
+     as.data.frame()
+   
+   data_references <- lapply(data_all, function(x) x[[2]])
+   meta_data <- lapply(1:length(data_references[[1]]), function(x) lapply(data_references, function(y) y[[x]]))
+   meta_data <- lapply(meta_data, function(x) as.data.frame(bind_rows(x)))
+   names(meta_data) <- names(data_references[[1]])
+   attr(out, "meta_data") <- meta_data
+   
+   class(out) <- c("data.frame", "domstolr")
+   return(out)
 }
 
 ## ## For testing

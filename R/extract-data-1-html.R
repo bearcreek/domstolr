@@ -61,6 +61,7 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables) {
     for (ind in page_ind) .case_data$avsnitt[ind + 1] <- (ind - 1)
     .case_data <- .case_data %>%
       group_by(avsnitt) %>%
+      filter(!avsnitt %in% page_ind) %>%
       summarize(tekst = paste0(tekst, collapse = "")) %>%
       ungroup()
   }

@@ -85,36 +85,82 @@ extract_data_keywords <- function(data_case) {
 ## Section: Extract properties of the text, such as which judges
 ## that are speaking.
 
-## First, detect method
-## Method 1: no votes being cast
-## Method 2: votes being cast
-# voting <- as.numeric(grep("Dommer", data$tekst))
-#   if (vote == 1)
-#     class(.case) <- c("non_voting", class(.case))
-#   else
-#     class(.case) <- c("voting", class(.case))
-#   
-#   ## Then use it
-#   UseMethod("...", .case)
-#   }
+## ## First, detect method
+## ## Method 1: no votes being cast
+## ## Method 2: votes being cast
+## voting <- as.numeric(grep("Dommer", data$tekst))
+##   if (vote == 1)
+##     class(.case) <- c("non_voting", class(.case))
+##   else
+##     class(.case) <- c("voting", class(.case))
 
 add_data_section <- function(data_case) {
-    data_case <- lapply(unique(data_case$publisert), function(case) {
-      data <- data_case[data_case$publisert == case, ]
-      data$seksjon <- NA
-      if (any(grepl("Jeg er kommet til ", data$tekst))) {
-        data$seksjon[grep("Jeg er kommet til ", data$tekst)] <- "Main opinion"
-        data$seksjon[grep("Jeg stemmer for ", data$tekst)] <- "Judgement"
-        if (!is.na(data$seksjon[1])) {
-          data$seksjon[1] <- "Syllabus"
-        }
-      } 
-      ## Voting
-    data$seksjon[grep("Dommer", data$tekst)[grep("Dommer", data$tekst) > 1][1]] <- "annenvoterende"
-      data <- fill(data, seksjon)
-      data$seksjon[is.na(data$seksjon)] <- "Syllabus"
-      return(data)
-    })
-    data_case <- bind_rows(data_case)
-    return(data_case)
-  }
+  voting <- data_case$publisert[grep("Dommer", data_case$tekst)]
+  voting <- voting[!voting %in% which(data_case$avsnitt != 1)]
+  voting <- unique(voting)
+
+  data_case <- lapply(unique(data_case$publisert), function(case) {
+
+    data <- data_case[data_case$publisert == case, ]
+
+    data$seksjon <- NA
+
+    ## Syllabus
+    data$seksjon[1] <- "Syllabus"
+
+    if (case %in% voting) {
+      data$voting <- "voting"
+
+      ## Main opinion
+      pattern_main <- c("^ *Jeg er kommet til ", "^ *Jeg starter med å se", "^ *Jeg finner at", "^ *Jeg bemerker at saken", "^ *Mitt syn på saken:", "^ *Eg er komen til", "^ *Egne bemerkninger", "^ *Jeg ser først på", "^ *Jeg ser slik på saken:")
+      main_opinion <- as.numeric(unlist(sapply(pattern_main, grep, x = data$tekst)))
+      main_opinion <- main_opinion[!is.na(main_opinion)]
+      data$seksjon[main_opinion] <- "Main opinion"
+
+      ## Votes
+      pattern_votes_1 <- c("^ *Eg røystar etter dette", "^ *Jeg stemmer for")
+      votes_1 <- as.numeric(unlist(sapply(pattern_votes_1, grep, x = data$tekst)))
+      votes_1 <- votes_1[!is.na(votes_1)]
+      pattern_votes <- c("^ *Dommer ", "^ *Justituarius ", "^ *Justitiarius ", "^ *Kst dommer ")
+      votes <- as.numeric(unlist(sapply(pattern_votes, grep, x = data$tekst)))
+      votes <- votes[!is.na(votes)]
+      message(paste0("main_opinion: ", main_opinion, " | publisert: ", case))
+      if (length(main_opinion > 0)) {
+        votes <- votes[votes > max(main_opinion)]
+      } else {
+        votes <- votes[votes != 1]
+      }
+      votes <- c(votes_1, votes)
+      for (i in 1:length(votes)) data$seksjon[votes[i]] <- paste0("vote_", i)
+
+      ## Judgement
+      pattern_judgement <- c("^ *Etter stemmegivningen avsa Høyesterett denne")
+      judgement <- as.numeric(unlist(sapply(pattern_judgement, grep, x = data$tekst)))
+      judgement <- judgement[!is.na(judgement)]
+      data$seksjon[judgement] <- "Judgement"
+
+    } else {
+      data$voting <- "non_voting"
+
+      ## Main opinon
+      pattern_main <- c("^ *Jeg er kommet til ", "^ *Høyesteretts ankeutvalg", "^ *Høyesteretts kompetanse", "^ *Jeg starter med å se", "^ *Jeg finner at", "^ *Jeg bemerker at saken", "^ *Mitt syn på saken:", "^ *Eg er komen til", "^ *Egne bemerkninger", "^ *Jeg ser først på", "^ *Jeg ser slik på saken:", "^ *Høyesterett bemerker at ")
+      main_opinion <- as.numeric(unlist(sapply(pattern_main, grep, x = data$tekst)))
+      main_opinion <- main_opinion[!is.na(main_opinion)]
+      data$seksjon[main_opinion] <- "Main opinion"
+
+      ## Judgement
+      pattern_judgement <- c("^ *Jeg stemmer for denne", "^ *Eg røystar etter dette")
+      judgement <- as.numeric(unlist(sapply(pattern_judgement, grep, x = data$tekst)))
+      judgement <- judgement[!is.na(judgement)]
+      data$seksjon[judgement] <- "Judgement"
+    }
+
+    data <- fill(data, seksjon)
+
+    ##gsub("Dommer ([A-ZÆØÅ].*): .*$", "\\1", "Dommer Hei-ho: fdsafdsa fsda ")
+
+    return(data)
+  })
+  data_case <- bind_rows(data_case)
+  return(data_case)
+}

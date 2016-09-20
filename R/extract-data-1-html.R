@@ -58,7 +58,7 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables) {
   ## that the paragraph got cut off
   page_ind <- grep("^Side *\\d+.*", .case_data$tekst)
   if (length(page_ind) > 0) {
-    for (ind in page_ind) .case_data$avsnitt[ind] <- (ind - 1)
+    for (ind in page_ind) .case_data$avsnitt[ind + 1] <- (ind - 1)
     .case_data <- .case_data %>%
       group_by(avsnitt) %>%
       summarize(tekst = paste0(tekst, collapse = "")) %>%

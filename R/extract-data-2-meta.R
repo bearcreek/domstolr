@@ -93,10 +93,13 @@ extract_data_keywords <- function(data_case) {
 #     class(.case) <- c("non_voting", class(.case))
 #   else
 #     class(.case) <- c("voting", class(.case))
-#   
+#
 #   ## Then use it
 #   UseMethod("...", .case)
 #   }
+
+org_data_case <- data_case
+data_case <- org_data_case
 
 add_data_section <- function(data_case) {
     data_case <- lapply(unique(data_case$publisert), function(case) {
@@ -108,7 +111,7 @@ add_data_section <- function(data_case) {
         if (!is.na(data$seksjon[1])) {
           data$seksjon[1] <- "Syllabus"
         }
-      } 
+      }
       ## Voting
     data$seksjon[grep("Dommer", data$tekst)[grep("Dommer", data$tekst) > 1][1]] <- "annenvoterende"
       data <- fill(data, seksjon)

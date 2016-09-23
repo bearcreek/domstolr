@@ -1,4 +1,3 @@
-
 ## Takes the html code from one case and extracts text and
 ## references. The html must be parsed differently depending on when
 ## the case is from.

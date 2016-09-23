@@ -25,7 +25,11 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
     if (length(file) == 0) stop("Unable to find any files.")
   }
 
-  data_all <- lapply(file, extract_data, meta_only = meta_only, verbose = verbose)
+  data_all <- parallelMap(extract_data_case,
+                          file = file,
+                          more.args = list(meta_only = meta_only, verbose = verbose),
+                          level = "file")
+
 
   if (meta_only) {
     out <- as.data.frame(bind_rows(data_all))
@@ -52,7 +56,7 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
 extract_data <- function(file, meta_only = FALSE, verbose = FALSE) {
 
   ## Split the html file into separate html snippets for each case.
-  all_cases <- file read_html(file, encoding = "UTF-8")
+  all_cases <- read_html(file, encoding = "UTF-8")
   all_cases <- html_nodes(all_cases, "body br ~ div")
 
   if (verbose) message(paste("\nParsing", length(all_cases), "cases: "), appendLF = FALSE)
@@ -61,7 +65,7 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE) {
   ##
   ## The main parse functions that parse the html are in a separate
   ## file (extract-data-1-html.R).
-  data_extracted <- lapply(all_cases, function(.case) {
+  extract_data_case <- function(.case, meta_only, verbose) {
 
     all_tables <- xml_find_all(.case, ".//table")
 
@@ -87,7 +91,11 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE) {
       ungroup()
 
     return(list(data_case = data_case, data_references = data_references))
-  })
+  }
+
+  data_extracted <- parallelMap(extract_data_case,
+                                .case = all_cases,
+                                more.args = list(meta_only = meta_only, verbose = verbose)) #, level = "case")
 
   ## Extract and clean case data
   data_case <- lapply(data_extracted, function(x) x$data_case) %>% bind_rows()

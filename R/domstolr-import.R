@@ -53,10 +53,13 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
 ## pkgs <- c("rvest", "magrittr", "dplyr", "tidyr")
 ## for (pkg in pkgs) if (!require(pkg, character.only = TRUE)) install.packages(pkg, character.only = TRUE)
 
-## file <- "data/hr_scrape_1996.html"
+## file <- "data/hr_scrape_1997.html"
 ## file <- "data/hr_scrape_2014.html"
 ## meta_only <- FALSE
 ## verbose <- TRUE
+
+library(parallelMap)
+parallelStartMulticore(20)
 
 extract_data <- function(file, meta_only = FALSE, verbose = FALSE) {
 
@@ -72,7 +75,7 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE) {
   ##
   ## The main parse functions that parse the html are in a separate
   ## file (extract-data-1-html.R).
-  data_extracted <- lapply(all_cases, function(.case) {
+  data_extracted <- parallelLapply(all_cases, function(.case) {
 
     all_tables <- xml_find_all(.case, ".//table")
 

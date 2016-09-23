@@ -18,7 +18,6 @@ extract_data_parties <- function(data_case) {
   return(parter)
 }
 
-
 ## Decision type (Dom/Kjennelse)
 add_data_decision_type <- function(data_case) {
   type <- gsub("^.* - ", "", data_case$instans)
@@ -85,9 +84,6 @@ extract_data_keywords <- function(data_case) {
 ## Section: Extract properties of the text, such as what part of the
 ## decision it is and which judges that are speaking.
 ## data_case_org <- data_case
-
-data_case <- data_case_org
-
 add_data_section <- function(data_case) {
 
   voting <- data_case$publisert[data_case$avsnitt != 1][grep("^ *Domm[ea]r [A-ZÆØÅ].*:", data_case$tekst[data_case$avsnitt != 1])]
@@ -170,7 +166,7 @@ add_data_section <- function(data_case) {
 
     } else {  # Non-voting decions
 
-      data$case_have_vpte <- "non_voting"
+      data$case_have_vote <- "non_voting"
 
       ## Main opinon
       main_opinion <- find_section(c("^ *Jeg er kommet til ",

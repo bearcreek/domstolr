@@ -1,4 +1,5 @@
 #' @import parallelMap
+#' @import xml2
 
 .onAttach = function(libname, pkgname) {
   # ...

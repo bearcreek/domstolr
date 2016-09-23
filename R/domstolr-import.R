@@ -25,11 +25,9 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
     if (length(file) == 0) stop("Unable to find any files.")
   }
 
-  data_all <- parallelMap(extract_data_case,
+  data_all <- parallelMap(extract_data,
                           file = file,
-                          more.args = list(meta_only = meta_only, verbose = verbose),
-                          level = "file")
-
+                          more.args = list(meta_only = meta_only, verbose = verbose))  # , level = "file")
 
   if (meta_only) {
     out <- as.data.frame(bind_rows(data_all))
@@ -77,7 +75,7 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE) {
 
     if (meta_only) return(list(data_meta = data_meta))
 
-    data_extracted_inner <- extract_data_html(.case, data_meta, all_tables)
+    data_extracted_inner <- extract_data_html(.case, data_meta, all_tables, verbose)
 
     data_references <- lapply(data_extracted_inner, attr, which = ".case_references") %>%
       bind_rows() %>%

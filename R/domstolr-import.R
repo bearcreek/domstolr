@@ -58,9 +58,6 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
 ## meta_only <- FALSE
 ## verbose <- TRUE
 
-library(parallelMap)
-parallelStartMulticore(20)
-
 extract_data <- function(file, meta_only = FALSE, verbose = FALSE) {
 
   ## Split the html file into separate html snippets for each case.
@@ -75,7 +72,7 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE) {
   ##
   ## The main parse functions that parse the html are in a separate
   ## file (extract-data-1-html.R).
-  data_extracted <- parallelLapply(all_cases, function(.case) {
+  data_extracted <- lapply(all_cases, function(.case) {
 
     all_tables <- xml_find_all(.case, ".//table")
 

@@ -49,24 +49,13 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
   return(out)
 }
 
-## ## For testing
-## pkgs <- c("rvest", "magrittr", "dplyr", "tidyr")
-## for (pkg in pkgs) if (!require(pkg, character.only = TRUE)) install.packages(pkg, character.only = TRUE)
-
-## file <- "data/hr_scrape_1997.html"
-## file <- "data/hr_scrape_2014.html"
-## meta_only <- FALSE
-## verbose <- TRUE
-
 extract_data <- function(file, meta_only = FALSE, verbose = FALSE) {
 
   ## Split the html file into separate html snippets for each case.
-  all_cases <- file %>%
-    read_html(encoding = "UTF-8") %>%
-    html_nodes("body br ~ div")
+  all_cases <- file read_html(file, encoding = "UTF-8")
+  all_cases <- html_nodes(all_cases, "body br ~ div")
 
-  if (verbose)
-    message(paste("\nParsing", length(all_cases), "cases: "), appendLF = FALSE)
+  if (verbose) message(paste("\nParsing", length(all_cases), "cases: "), appendLF = FALSE)
 
   ## Extract meta data, text, and references from the html code.
   ##

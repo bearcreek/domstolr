@@ -8,3 +8,4 @@
 !.gitignore
 *#
 R/data/
+R/testing-utils.R

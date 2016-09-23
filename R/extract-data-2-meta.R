@@ -95,8 +95,8 @@ extract_data_keywords <- function(data_case) {
 ##     class(.case) <- c("voting", class(.case))
 
 add_data_section <- function(data_case) {
-  voting <- data_case$publisert[grep("Dommer", data_case$tekst)]
-  voting <- voting[!voting %in% which(data_case$avsnitt != 1)]
+
+  voting <- data_case$publisert[data_case$avsnitt != 1][grep("^ *Domm[ea]r [A-ZÆØÅ].*:", data_case$tekst[data_case$avsnitt != 1])]
   voting <- unique(voting)
 
   data_case <- lapply(unique(data_case$publisert), function(case) {
@@ -108,6 +108,12 @@ add_data_section <- function(data_case) {
     ## Syllabus
     data$seksjon[1] <- "Syllabus"
 
+    ## lower_court_excerpt
+    pattern_lower_court_excerpt <- c("^ *Av herredsrettens dom .*:$")
+    lower_court_excerpt <- as.numeric(unlist(sapply(pattern_lower_court_excerpt, grep, x = data$tekst)))
+    lower_court_excerpt <- lower_court_excerpt[!is.na(lower_court_excerpt)]
+    data$seksjon[lower_court_excerpt] <- "lower_court_excerpt"
+
     if (case %in% voting) {
       data$voting <- "voting"
 
@@ -118,10 +124,10 @@ add_data_section <- function(data_case) {
       data$seksjon[main_opinion] <- "Main opinion"
 
       ## Votes
-      pattern_votes_1 <- c("^ *Eg røystar etter dette", "^ *Jeg stemmer for")
+      pattern_votes_1 <- c("^ *Eg røystar etter dette", "[Jj]eg stemmer for", "^dom:$", "^ *Jeg stemmer etter dette", "^Da jeg er i mindretall, former jeg ingen konklusjon")
       votes_1 <- as.numeric(unlist(sapply(pattern_votes_1, grep, x = data$tekst)))
-      votes_1 <- votes_1[!is.na(votes_1)]
-      pattern_votes <- c("^ *Dommer ", "^ *Justituarius ", "^ *Justitiarius ", "^ *Kst dommer ")
+      votes_1 <- votes_1[!is.na(votes_1)][1]
+      pattern_votes <- c("^ *Domm[ea]r[ne]* ", "^ *Justituarius ", "^ *Justitiarius ", "^ *Kst domm[ea]r ")
       votes <- as.numeric(unlist(sapply(pattern_votes, grep, x = data$tekst)))
       votes <- votes[!is.na(votes)]
       message(paste0("main_opinion: ", main_opinion, " | publisert: ", case))
@@ -153,14 +159,64 @@ add_data_section <- function(data_case) {
       judgement <- as.numeric(unlist(sapply(pattern_judgement, grep, x = data$tekst)))
       judgement <- judgement[!is.na(judgement)]
       data$seksjon[judgement] <- "Judgement"
+
     }
 
     data <- fill(data, seksjon)
 
     ##gsub("Dommer ([A-ZÆØÅ].*): .*$", "\\1", "Dommer Hei-ho: fdsafdsa fsda ")
 
+    # Find judges speaking
+    data <- data %>%
+      mutate(meta_judge = ifelse(grepl("^ *Domm[ea]r [A-ZÆØÅ].*:.*$", tekst),
+                                 gsub("^ *Domm[ea]r ([A-ZÆØÅ][a-zæøå]+):.*$", "\\1", tekst), NA)) %>%
+      fill(meta_judge)
+
+      ##       ,
+      ##        meta_judge = strsplit(gsub("\\.", "", meta_judge), " og |, ")) %>%
+      ## unnest() %>%
+      ## mutate(meta_judge = gsub("[dD]omm[ea]r[ne]* ", "", meta_judge),
+      ##        meta_judge = gsub("[dD]elvis", "", meta_judge),
+      ##        meta_judge = gsub("\\:|\\,|[kK]st ", "", meta_judge),
+      ##        meta_judge = gsub("Justitiarius ", "", meta_judge),
+      ##        meta_judge = gsub("og", "", meta_judge),
+      ##        meta_judge = gsub("^ +| +$", "", meta_judge),
+      ##        meta_judge = strsplit(meta_judge, " ")) %>%
+      ## unnest() %>%
+      ## fill(meta_judge)
+
+
+    # Fill judges
+    # df <- df %>%
+    #   group_by(publisert) %>%
+    # fill(meta_judge)
+
+    ## # Match judges with id number
+    ## df$meta_judge_id <- NA
+
+    ##   df$meta_judge_id <- lapply(df$meta_judge_id, function(x) judge$id[match(x,judge$id)])
+
+    ## if (df$meta_judge == "Ringnes")
+    ##   df$meta_judge_id[1] <- "123"
+
+
     return(data)
   })
   data_case <- bind_rows(data_case)
+
   return(data_case)
 }
+
+
+## ##save(data_case, file = "data_case.RData")
+## load("data_case.RData")
+
+## install.packages("fuzzyjoin")
+## library(fuzzyjoin)
+
+## judges <- readxl::read_excel("data/post1995_olav.xlsx")
+## names(judges) <- tolower(names(judges))
+
+## judges <- judges %>%
+##   select(jfname, jfamname, socdemgov:regjeringsadv) %>%
+##   filter(!duplicated(jfname))

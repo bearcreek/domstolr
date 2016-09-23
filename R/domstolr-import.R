@@ -53,7 +53,7 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
 ## pkgs <- c("rvest", "magrittr", "dplyr", "tidyr")
 ## for (pkg in pkgs) if (!require(pkg, character.only = TRUE)) install.packages(pkg, character.only = TRUE)
 
-## file <- "data/hr_scrape_1996.html"
+## file <- "data/hr_scrape_1997.html"
 ## file <- "data/hr_scrape_2014.html"
 ## meta_only <- FALSE
 ## verbose <- TRUE

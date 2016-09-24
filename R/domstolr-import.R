@@ -1,6 +1,14 @@
 #' Import selections downloaded as html from Lovdata Pro (C).
 #'
 #' Import selections downloaded as html from Lovdata Pro (C).
+#'
+#' @importFrom parallelMap parallelMap
+#' @importFrom rvest read_html html_nodes html_table
+#' @importFrom xml2 xml_find_all
+#' @importFrom tidyr spread fill
+#' @importFrom dplyr rename bind_rows group_by mutate filter ungroup
+#' @importFrom magrittr %>%
+#'
 #' @param file Single file to import.
 #' @param directory Directory to import files from.
 #' @param regex Regular Expression to use when searching for files within directory. Default is to extract all html files.
@@ -8,11 +16,13 @@
 #' @param meta_only If TRUE it will only return the data within the header table of each case.
 #' @param verbose If TRUE it will print out dots for each parsed case to signal how far the function have come.
 #' @keywords domstolr lovdata
-#' @export
+#'
 #' @examples
+#'\dontrun{
 #' domstol_data <- domstolr_import(directiory = "data/")
 #' save(data, file = "domstol_data.RData")
-
+#' }
+#' @export
 domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", recursive = TRUE,
                             meta_only = FALSE, verbose = FALSE) {
 

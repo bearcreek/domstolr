@@ -1,20 +1,29 @@
+#' Extract additional data from text and meta data
+#'
+#' Various functions for importing extract additional data from text
+#' and meta data
+#'
+#' @importFrom dplyr data_frame bind_rows select
+#' @importFrom tidyr unnest spread fill
+#' @importFrom parallelMap parallelMap
+
 ## Case parties
 add_data_parties <- function(data_case) {
   data_case <- data_case %>%
-    mutate(part_a = gsub(" mot .+$", "", data_case$parter),
+  dplyr::mutate(part_a = gsub(" mot .+$", "", data_case$parter),
            part_b = gsub("^.+ mot ", "", data_case$parter))
   return(data_case)
 }
 
 extract_data_parties <- function(data_case) {
   parter <- lapply(c("part_a", "part_b"), function(y) {
-    data_frame(id = data_case$publisert,
+    dplyr::data_frame(id = data_case$publisert,
                part = data_case[[y]],
                side = y,
                advokat = lapply(strsplit(data_case[[y]], "\\("), function(x) gsub(").*$", "", x[grep("\\)", x)]))) %>%
-      unnest(advokat)
+      tidyr::unnest(advokat)
   })
-  parter <- bind_rows(parter)
+  parter <- dplyr::bind_rows(parter)
   return(parter)
 }
 
@@ -28,38 +37,38 @@ add_data_decision_type <- function(data_case) {
   type <- strsplit(type, " ")
 
   data_case <- data_case %>%
-    mutate(type = type) %>%
-    unnest(type) %>%
-    mutate(type_value = 1) %>%
-    spread(type, type_value, fill = 0)
+    dplyr::mutate(type = type) %>%
+    dplyr::unnest(type) %>%
+    dplyr::mutate(type_value = 1) %>%
+    tidyr::spread(type, type_value, fill = 0)
   return(data_case)
 }
 
 ## Case Type (Straff/Sivil)
 add_data_case_type <- function(data_case) {
   data_case <- data_case %>%
-    mutate(type = ifelse(grepl("sivil sak", data_case$saksgang, ignore.case = TRUE), "sivil sak", NA),
-           type = ifelse(grepl("straffesak", data_case$saksgang, ignore.case = TRUE), "straffesak", type))
+    dplyr::mutate(type = ifelse(grepl("sivil sak", data_case$saksgang, ignore.case = TRUE), "sivil sak", NA),
+                  type = ifelse(grepl("straffesak", data_case$saksgang, ignore.case = TRUE), "straffesak", type))
   return(data_case)
 }
 
 ## Case Proceedings (case flow/saksgang)
 extract_data_case_proceedings <- function(data_case) {
-  saksgang <- data_frame(id = data_case$publisert,
+  saksgang <- dplyr::data_frame(id = data_case$publisert,
                          instans = strsplit(data_case$saksgang, " -"),
                          rekke = sapply(instans, function(x) 1:length(x))) %>%
-    unnest() %>%
-    mutate(instans = gsub("^ +| +$", "", instans))
+    tidyr::unnest() %>%
+    dplyr::mutate(instans = gsub("^ +| +$", "", instans))
   return(saksgang)
 }
 
 ## Judges
 extract_data_judges <- function(data_case) {
-  dommere <- data_frame(id = data_case$publisert,
+  dommere <- dplyr::data_frame(id = data_case$publisert,
                         dommer = strsplit(gsub("\\.", "", data_case$forfatter), " og |, |[dD]issens|[sS]ærmerknad[er]*"),
                         nr = lapply(dommer, function(x) 1:length(x))) %>%
-    unnest() %>%
-    mutate(justitiarius = ifelse(grepl("Justitiarius", dommer), 1, 0),
+    tidyr::unnest() %>%
+    dplyr::mutate(justitiarius = ifelse(grepl("Justitiarius", dommer), 1, 0),
            kst = ifelse(nr == 1, 1, 0),
            dommer = gsub("[dD]ommer[ne]* ", "", dommer),
            dommer = gsub("[dD]elvis", "", dommer),
@@ -67,17 +76,17 @@ extract_data_judges <- function(data_case) {
            dommer = gsub("Justitiarius ", "", dommer),
            dommer = gsub("og", "", dommer),
            dommer = gsub("^ +| +$", "", dommer)) %>%
-    select(-nr) %>%
-    mutate(dommer = strsplit(dommer, " ")) %>%
-    unnest()
+    dplyr::select(-nr) %>%
+    dplyr::mutate(dommer = strsplit(dommer, " ")) %>%
+    tidyr::unnest()
   return(dommere)
 }
 
 ## Keywords
 extract_data_keywords <- function(data_case) {
-  stikkord <- data_frame(id = data_case$publisert,
-                         stikkord = strsplit(data_case$stikkord, "\\. *")) %>%
-    unnest()
+  stikkord <- dplyr::data_frame(id = data_case$publisert,
+                                stikkord = strsplit(data_case$stikkord, "\\. *")) %>%
+    tidyr::unnest()
   return(stikkord)
 }
 
@@ -89,28 +98,25 @@ add_data_section <- function(data_case) {
   voting <- data_case$publisert[data_case$avsnitt != 1][grep("^ *Domm[ea]r [A-ZÆØÅ].*:", data_case$tekst[data_case$avsnitt != 1])]
   voting <- unique(voting)
 
-  ##data_case <- lapply(unique(data_case$publisert), function(case) {
-
   add_section_information_case <- function(case) {
     data <- data_case[data_case$publisert == case, ]
     data$section <- NA
 
     ## Judges speaking as section_judge
     data <- data %>%
-      mutate(section_judge = ifelse(grepl("^ *Domm[ea]r[ne]* .*:.*$", tekst),
+      dplyr::mutate(section_judge = ifelse(grepl("^ *Domm[ea]r[ne]* .*:.*$", tekst),
                                     gsub("^ *Domm[ea]r[ne]* (.*?):.*$", "\\1", tekst), NA),
              section_judge = strsplit(gsub("\\.", "", section_judge), " og |, ")) %>%
-      unnest() %>%
-      mutate(section_judge = gsub("[dD]omm[ea]r[ne]* ", "", section_judge),
+      tidyr::unnest() %>%
+      dplyr::mutate(section_judge = gsub("[dD]omm[ea]r[ne]* ", "", section_judge),
              section_judge = gsub("[dD]elvis", "", section_judge),
              section_judge = gsub("\\:|\\,|[kK]st ", "", section_judge),
              section_judge = gsub("Justitiarius ", "", section_judge),
              section_judge = gsub("og", "", section_judge),
              section_judge = gsub("^ +| +$", "", section_judge),
              section_judge = strsplit(section_judge, " ")) %>%
-      unnest() %>%
-      fill(section_judge)
-
+      tidyr::unnest() %>%
+      tidyr::fill(section_judge)
 
     ## Func to add to section using pattern. Expects data$tekst.
     find_section <- function(patterns) {
@@ -189,14 +195,14 @@ add_data_section <- function(data_case) {
       data$section[judgement] <- "judgement"
     }
 
-    data <- fill(data, section)
+    data <- tidyr::fill(data, section)
 
     return(data)
   }
 
-  data_case <- parallelMap(add_section_information_case,
-                           case = unique(data_case$publisert)) #, level = "case")
-  data_case <- bind_rows(data_case)
+  data_case <- parallelMap::parallelMap(add_section_information_case,
+                                        case = unique(data_case$publisert)) #, level = "case")
+  data_case <- dplyr::bind_rows(data_case)
 
 return(data_case)
 }

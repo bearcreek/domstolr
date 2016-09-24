@@ -24,8 +24,10 @@ domstolr_import(file = NULL, directory = NULL, regex = ".*.html$",
 Import selections downloaded as html from Lovdata Pro (C).
 }
 \examples{
-domstol_data <- domstolr_imøort(directiory = "data/")
+\dontrun{
+domstol_data <- domstolr_import(directiory = "data/")
 save(data, file = "domstol_data.RData")
+}
 }
 \keyword{domstolr}
 \keyword{lovdata}

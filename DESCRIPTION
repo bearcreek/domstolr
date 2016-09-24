@@ -10,7 +10,8 @@ Depends:
     rvest,
     magrittr,
     dplyr,
-    tidyr
+    tidyr,
+    xml2
 License: GPLv3
 Encoding: UTF-8
 LazyData: true

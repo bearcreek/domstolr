@@ -1,8 +1,7 @@
-
 ## Takes the html code from one case and extracts text and
 ## references. The html must be parsed differently depending on when
 ## the case is from.
-extract_data_html <- function(.case, data_meta, all_tables) {
+extract_data_html <- function(.case, data_meta, all_tables, verbose) {
 
   if (verbose) message(".", appendLF = FALSE)
 
@@ -19,7 +18,7 @@ extract_data_html <- function(.case, data_meta, all_tables) {
 
 ## Cases after 2003 are split into tables where each table is a
 ## official paragraph within the court decision
-extract_data_html.sc_after_2003 <- function(.case, data_meta, all_tables) {
+extract_data_html.sc_after_2003 <- function(.case, data_meta, all_tables, ...) {
   get_references <- TRUE
   .case_data <- lapply(all_tables[2:length(all_tables)], function(.table) {
     if (is.null(.table)) return(NULL)
@@ -44,7 +43,7 @@ extract_data_html.sc_after_2003 <- function(.case, data_meta, all_tables) {
 ## Cases before 2003 are split in paragraphs (<p>), although not
 ## officially a paragraph we use these to denote e.g. what paragraph a
 ## reference where made
-extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables) {
+extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) {
   get_references <- TRUE
   nodes <- xml_find_all(.case, ".//p[preceding-sibling::hr] | .//table[preceding-sibling::hr]")
   .text <- html_text(nodes)

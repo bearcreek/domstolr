@@ -6,6 +6,7 @@ Authors@R: c(person("Mikael Poul", "Johannesson", email = "Mikael.Johannesson@ui
 Description: Tool for extracting text data from decisions handed down by the Norwegian Supreme Court.
 Depends:
     R (>= 3.0.0),
+    parallelMap,
     rvest,
     magrittr,
     dplyr,

@@ -1,6 +1,6 @@
-#' Import selections downloaded as html from Lovdata Pro (C).
+#' Import selections downloaded as html from Lovdata Pro (C)
 #'
-#' Import selections downloaded as html from Lovdata Pro (C).
+#' Import selections downloaded as html from Lovdata Pro (C)
 #'
 #' @importFrom parallelMap parallelMap
 #' @importFrom rvest html_nodes html_table
@@ -35,9 +35,7 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
     if (length(file) == 0) stop("Unable to find any files.")
   }
 
-  data_all <- parallelMap::parallelMap(extract_data,
-                          file = file,
-                          more.args = list(meta_only = meta_only, verbose = verbose))  # , level = "file")
+  data_all <- lapply(extract_data, file = file, meta_only = meta_only, verbose = verbose)
 
   if (meta_only) {
     out <- as.data.frame(bind_rows(data_all))
@@ -46,7 +44,7 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
   }
 
   out <- lapply(data_all, function(x) x$data_case)
-  out <- do.call("rbind", out)
+  out <- dplyr::bind_rows(out)
 
   data_references <- lapply(data_all, function(x) x[[2]])
   meta_data <- lapply(1:length(data_references[[1]]), function(x) lapply(data_references, function(y) y[[x]]))
@@ -63,6 +61,8 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
 extract_data <- function(file, meta_only = FALSE, verbose = FALSE) {
 
   ## Split the html file into separate html snippets for each case.
+  file <- readLines(file, encoding = "UTF-8", warn = FALSE)
+  file <- enc2utf8(file)
   all_cases <- xml2::read_html(file, encoding = "UTF-8")
   all_cases <- rvest::html_nodes(all_cases, "body br ~ div")
 
@@ -79,19 +79,18 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE) {
     data_meta <- all_tables[[1]] %>%
       rvest::html_table() %>%
       dplyr::rename(variable = X1,
-             value = X2) %>%
+                    value = X2) %>%
       tidyr::spread(variable, value)
 
     if (meta_only) return(list(data_meta = data_meta))
 
     data_extracted_inner <- extract_data_html(.case, data_meta, all_tables, verbose)
 
-    data_references <- lapply(data_extracted_inner, attr, which = ".case_references")
-    data_references <- do.call("rbind", data_references)
-    data_references$publisert <- data_meta$Publisert
-
-    data_case <- data_extracted_inner %>%
+    data_references <- lapply(data_extracted_inner, attr, which = ".case_references") %>%
       dplyr::bind_rows() %>%
+      dplyr::mutate(publisert = data_meta$Publisert)
+
+    data_case <- dplyr::bind_rows(data_extracted_inner) %>%
       tidyr::fill(avsnitt) %>%
       dplyr::group_by(avsnitt) %>%
       dplyr::mutate(tekst = paste0(tekst, collapse = " ")) %>%

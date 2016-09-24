@@ -38,7 +38,7 @@ add_data_decision_type <- function(data_case) {
 
   data_case <- data_case %>%
     dplyr::mutate(type = type) %>%
-    dplyr::unnest(type) %>%
+    tidyr::unnest(type) %>%
     dplyr::mutate(type_value = 1) %>%
     tidyr::spread(type, type_value, fill = 0)
   return(data_case)

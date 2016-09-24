@@ -2,7 +2,7 @@
 % Please edit documentation in R/domstolr-import.R
 \name{domstolr_import}
 \alias{domstolr_import}
-\title{Import selections downloaded as html from Lovdata Pro (C).}
+\title{Import selections downloaded as html from Lovdata Pro (C)}
 \usage{
 domstolr_import(file = NULL, directory = NULL, regex = ".*.html$",
   recursive = TRUE, meta_only = FALSE, verbose = FALSE)
@@ -21,11 +21,13 @@ domstolr_import(file = NULL, directory = NULL, regex = ".*.html$",
 \item{verbose}{If TRUE it will print out dots for each parsed case to signal how far the function have come.}
 }
 \description{
-Import selections downloaded as html from Lovdata Pro (C).
+Import selections downloaded as html from Lovdata Pro (C)
 }
 \examples{
-domstol_data <- domstolr_imøort(directiory = "data/")
+\dontrun{
+domstol_data <- domstolr_import(directiory = "data/")
 save(data, file = "domstol_data.RData")
+}
 }
 \keyword{domstolr}
 \keyword{lovdata}

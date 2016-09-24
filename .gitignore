@@ -6,6 +6,7 @@
 .RData
 *~
 !.gitignore
+!-Rbuildignore
 *#
 R/data/
 R/testing-utils.R

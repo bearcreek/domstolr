@@ -3,8 +3,8 @@
 #' Import selections downloaded as html from Lovdata Pro (C).
 #'
 #' @importFrom parallelMap parallelMap
-#' @importFrom rvest read_html html_nodes html_table
-#' @importFrom xml2 xml_find_all
+#' @importFrom rvest html_nodes html_table
+#' @importFrom xml2 xml_find_all read_html
 #' @importFrom tidyr spread fill
 #' @importFrom dplyr rename bind_rows group_by mutate filter ungroup
 #' @importFrom magrittr %>%
@@ -63,7 +63,7 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
 extract_data <- function(file, meta_only = FALSE, verbose = FALSE) {
 
   ## Split the html file into separate html snippets for each case.
-  all_cases <- rvest::read_html(file, encoding = "UTF-8")
+  all_cases <- xml2::read_html(file, encoding = "UTF-8")
   all_cases <- rvest::html_nodes(all_cases, "body br ~ div")
 
   if (verbose) message(paste("\nParsing", length(all_cases), "cases: "), appendLF = FALSE)

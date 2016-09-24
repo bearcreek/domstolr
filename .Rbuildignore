@@ -1,2 +1,11 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+.gitignore$
+^\.Rproj\.user$
+^.*\.Rproj$
+^.travis.yml$
+Makefile
+.*\\~$
+.*\\#$
+R/testing-utils.R
+R/data/

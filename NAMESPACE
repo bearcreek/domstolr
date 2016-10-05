@@ -2,7 +2,6 @@
 
 export(domstolr_import)
 import(parallelMap)
-import(xml2)
 importFrom(dplyr,bind_cols)
 importFrom(dplyr,bind_rows)
 importFrom(dplyr,data_frame)

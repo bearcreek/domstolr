@@ -204,5 +204,8 @@ add_data_section <- function(data_case) {
                                         case = unique(data_case$publisert)) #, level = "case")
   data_case <- dplyr::bind_rows(data_case)
 
+
+
 return(data_case)
 }
+

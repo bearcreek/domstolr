@@ -9,6 +9,7 @@ Depends:
 Imports:
     dplyr,
     tidyr,
+    readr,
     magrittr,
     rvest,
     xml2,

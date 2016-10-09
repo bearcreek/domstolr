@@ -25,7 +25,7 @@
 #' }
 #' @export
 domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", recursive = TRUE,
-                            meta_only = FALSE, verbose = FALSE) {
+                            meta_only = FALSE, match_judges = TRUE, verbose = FALSE) {
 
   if (!is.null(directory)) {
     file  <- list.files(path = gsub("^/+", "", directory), recursive = recursive,
@@ -33,7 +33,7 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
     if (length(file) == 0) stop("Unable to find any files.")
   }
 
-  data_all <- lapply(file, extract_data, meta_only = meta_only, verbose = verbose)
+  data_all <- lapply(file, extract_data, meta_only = meta_only, verbose = verbose, match_judges = match_judges)
 
   if (meta_only) {
     out <- as.data.frame(bind_rows(data_all))
@@ -54,7 +54,7 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
   return(out)
 }
 
-extract_data <- function(file, meta_only = FALSE, verbose = FALSE) {
+extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges = TRUE) {
 
   ## Split the html file into separate html snippets for each case.
   file <- readr::read_lines(file)
@@ -132,7 +132,7 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE) {
   data_proceedings <- extract_data_case_proceedings(data_case)
 
   ## Judges
-  data_judges <- extract_data_judges(data_case)
+  data_judges <- extract_data_judges(data_case, match_judges = match_judges)
 
   ## Keywords
   data_keywords <- extract_data_keywords(data_case)

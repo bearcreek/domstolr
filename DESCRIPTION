@@ -14,7 +14,8 @@ Imports:
     rvest,
     xml2,
     parallelMap,
-    fuzzyjoin
+    fuzzyjoin,
+    stringdist
 License: GPLv3
 Encoding: UTF-8
 LazyData: true

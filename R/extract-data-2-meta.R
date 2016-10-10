@@ -154,7 +154,8 @@ add_data_section <- function(data_case) {
     data$section[1] <- "syllabus"
 
     ## lower_court_excerpt
-    lower_court_excerpt <- find_section(c("^ *Av herredsrettens dom .*:$"))
+    lower_court_excerpt <- find_section(c("^ *Av herredsrettens dom .*:$", 
+                                          "^ *Av byrettens dom .*:$"))
     data$section[lower_court_excerpt] <- "lower_court_excerpt"
 
     if (case %in% voting) {
@@ -165,7 +166,7 @@ add_data_section <- function(data_case) {
                                      "^ *Jeg starter med å se",
                                      "^ *Jeg finner at",
                                      "^ *Jeg bemerker at saken",
-                                     "^ *Mitt syn på saken:",
+                                     "^ *Mitt syn på saken",
                                      "^ *Eg er komen til",
                                      "^ *Egne bemerkninger",
                                      "^ *Jeg ser først på",
@@ -177,6 +178,7 @@ add_data_section <- function(data_case) {
                                 "[Jj]eg stemmer for",
                                 "^dom:$",
                                 "^ *Jeg stemmer etter dette",
+                                "^ *Etter dette stemmer jeg for",
                                 "^Da jeg er i mindretall, former jeg ingen konklusjon"))
       votes_1 <- votes_1[1]
       votes <- find_section(c("^ *Domm[ea]r[ne]* ",
@@ -192,7 +194,8 @@ add_data_section <- function(data_case) {
       for (i in 1:length(votes)) data$section[votes[i]] <- paste0("vote_", i)
 
       ## Judgement
-      judgement <- find_section(c("^ *Etter stemmegivningen avsa Høyesterett denne"))
+      judgement <- find_section(c("^ *Etter stemmegivningen avsa Høyesterett denne",
+                                  "^ *Etter røystinga sa Høgsterett slik"))
       data$section[judgement] <- "judgement"
 
     } else {  # Non-voting decions
@@ -206,7 +209,7 @@ add_data_section <- function(data_case) {
                                      "^ *Jeg starter med å se",
                                      "^ *Jeg finner at",
                                      "^ *Jeg bemerker at saken",
-                                     "^ *Mitt syn på saken:",
+                                     "^ *Mitt syn på saken",
                                      "^ *Eg er komen til",
                                      "^ *Egne bemerkninger",
                                      "^ *Jeg ser først på",
@@ -216,7 +219,8 @@ add_data_section <- function(data_case) {
 
       ## Judgement
       judgement <- find_section(c("^ *Jeg stemmer for denne",
-                                  "^ *Eg røystar etter dette"))
+                                  "^ *Eg røystar etter dette",
+                                  "^ *Slutning":))
       data$section[judgement] <- "judgement"
     }
 

@@ -5,13 +5,16 @@ Authors@R: c(person("Mikael Poul", "Johannesson", email = "Mikael.Johannesson@ui
 	   person("Olav", "Bjornebekk", email = "Olav.Bjornebekk@uib.no", role = c("aut", "cre")))
 Description: Tool for extracting text data from decisions handed down by the Norwegian Supreme Court.
 Depends:
-    R (>= 3.3.0),
+    R (>= 3.3.0)
+Imports:
     dplyr,
     tidyr,
+    readr,
     magrittr,
     rvest,
     xml2,
-    parallelMap
+    parallelMap,
+    fuzzyjoin
 License: GPLv3
 Encoding: UTF-8
 LazyData: true

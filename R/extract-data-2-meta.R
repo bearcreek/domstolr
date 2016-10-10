@@ -3,9 +3,10 @@
 #' Various functions for importing extract additional data from text
 #' and meta data
 #'
-#' @importFrom dplyr data_frame bind_rows select
+#' @importFrom dplyr data_frame bind_rows select filter slice
 #' @importFrom tidyr unnest spread fill
 #' @importFrom parallelMap parallelMap
+#' @importFrom fuzzyjoin stringdist_left_join
 
 ## Case parties
 add_data_parties <- function(data_case) {
@@ -62,24 +63,49 @@ extract_data_case_proceedings <- function(data_case) {
   return(saksgang)
 }
 
-## Judges
-extract_data_judges <- function(data_case) {
-  dommere <- dplyr::data_frame(id = data_case$publisert,
-                        dommer = strsplit(gsub("\\.", "", data_case$forfatter), " og |, |[dD]issens|[sS]ærmerknad[er]*"),
-                        nr = lapply(dommer, function(x) 1:length(x))) %>%
-    tidyr::unnest() %>%
-    dplyr::mutate(justitiarius = ifelse(grepl("Justitiarius", dommer), 1, 0),
-           kst = ifelse(nr == 1, 1, 0),
-           dommer = gsub("[dD]ommer[ne]* ", "", dommer),
-           dommer = gsub("[dD]elvis", "", dommer),
-           dommer = gsub("\\:|\\,|[kK]st ", "", dommer),
-           dommer = gsub("Justitiarius ", "", dommer),
-           dommer = gsub("og", "", dommer),
-           dommer = gsub("^ +| +$", "", dommer)) %>%
-    dplyr::select(-nr) %>%
-    dplyr::mutate(dommer = strsplit(dommer, " ")) %>%
-    tidyr::unnest()
-  return(dommere)
+## Judges (now matches with judges data set)
+extract_data_judges <- function(data_case, match_judges = TRUE) {
+
+  judges <- lapply(unique(data_case$publisert), function(.id) {
+
+    data <- data_case %>% dplyr::filter(publisert == .id) %>% dplyr::slice(1)
+
+    judges <- dplyr::data_frame(id = .id,
+                                dato = data$dato,
+                                judge = strsplit(gsub("\\.", "", data$forfatter),
+                                                 " og |, |[dD]issens|[sS]ærmerknad[er]*"),
+                                nr = lapply(judge, function(x) 1:length(x))) %>%
+      tidyr::unnest() %>%
+      dplyr::mutate(justitiarius = ifelse(grepl("Justitiarius", judge), 1, 0),
+                    kst = ifelse(nr == 1, 1, 0),
+                    judge = gsub("[dD]ommer[ne]* ", "", judge),
+                    judge = gsub("[dD]elvis", "", judge),
+                    judge = gsub("\\:|\\,|[kK]st ", "", judge),
+                    judge = gsub("Justitiarius ", "", judge),
+                    judge = gsub("og", "", judge),
+                    judge = gsub("^ +| +$", "", judge)) %>%
+      dplyr::select(-nr) %>%
+      dplyr::mutate(judge = strsplit(judge, " ")) %>%
+      tidyr::unnest()
+
+    if (match_judges) {
+      judges_elligable <- domstolr::judges %>%
+        filter(!(is.na(start) & is.na(end)),
+               ifelse(is.na(start), TRUE, start < judges$dato[1]),
+               ifelse(is.na(end), TRUE, end > judges$dato[1]))
+      judges <- judges %>%
+        fuzzyjoin::stringdist_left_join(judges_elligable, by = c(judge = "name_last")) %>%
+        dplyr::select(-judge) %>%
+        dplyr::mutate(judge = name_last,
+                      judge_full = name_full) %>%
+        dplyr::select(id, dato, judge, judge_full, JNR, PNR, justitiarius, kst, interim, chief, start, end)
+    }
+
+    return(judges)
+  })
+  judges <- bind_rows(judges)
+
+  return(judges)
 }
 
 ## Keywords
@@ -92,7 +118,6 @@ extract_data_keywords <- function(data_case) {
 
 ## Section: Extract properties of the text, such as what part of the
 ## decision it is and which judges that are speaking.
-## data_case_org <- data_case
 add_data_section <- function(data_case) {
 
   voting <- data_case$publisert[data_case$avsnitt != 1][grep("^ *Domm[ea]r [A-ZÆØÅ].*:", data_case$tekst[data_case$avsnitt != 1])]
@@ -104,17 +129,17 @@ add_data_section <- function(data_case) {
 
     ## Judges speaking as section_judge
     data <- data %>%
-      dplyr::mutate(section_judge = ifelse(grepl("^ *Domm[ea]r[ne]* .*:.*$", tekst),
-                                    gsub("^ *Domm[ea]r[ne]* (.*?):.*$", "\\1", tekst), NA),
-             section_judge = strsplit(gsub("\\.", "", section_judge), " og |, ")) %>%
+      dplyr::mutate(section_judge = ifelse(grepl("^ *Domm[ea]r[ne]* .*:.*$|^ *Justit[ui]arius .*:.*$|^ *Kst\\. domm[ea]r .*:.*$", tekst),
+                                           gsub("^ *(Domm[ea]r[ne]*|Justit[ui]arius|Kst\\. domm[ea]r) (.*?):.*$", "\\2", tekst), NA),
+                    section_judge = strsplit(gsub("\\.", "", section_judge), " og |, ")) %>%
       tidyr::unnest() %>%
       dplyr::mutate(section_judge = gsub("[dD]omm[ea]r[ne]* ", "", section_judge),
-             section_judge = gsub("[dD]elvis", "", section_judge),
-             section_judge = gsub("\\:|\\,|[kK]st ", "", section_judge),
-             section_judge = gsub("Justitiarius ", "", section_judge),
-             section_judge = gsub("og", "", section_judge),
-             section_judge = gsub("^ +| +$", "", section_judge),
-             section_judge = strsplit(section_judge, " ")) %>%
+                    section_judge = gsub("[dD]elvis", "", section_judge),
+                    section_judge = gsub("\\:|\\,|[kK]st ", "", section_judge),
+                    section_judge = gsub("Justit[ui]arius ", "", section_judge),
+                    section_judge = gsub(" og ", "", section_judge),
+                    section_judge = gsub("^ +| +$", "", section_judge),
+                    section_judge = strsplit(section_judge, " ")) %>%
       tidyr::unnest() %>%
       tidyr::fill(section_judge)
 
@@ -197,12 +222,22 @@ add_data_section <- function(data_case) {
 
     data <- tidyr::fill(data, section)
 
+    ## Verify section judge and pnr/jnr
+    judges_elligable <- domstolr::judges %>%
+      filter(!(is.na(start) & is.na(end)),
+             ifelse(is.na(start), TRUE, start < data$dato[1]),
+             ifelse(is.na(end), TRUE, end > data$dato[1]))
+
+    data <- data %>%
+      mutate(section_judge_matches = ifelse(section_judge %in% judges_elligable$name_last, 1, 0),
+             section_judge_JNR = judges_elligable$JNR[match(section_judge, judges_elligable$name_last)],
+             section_judge_PNR = judges_elligable$PNR[match(section_judge, judges_elligable$name_last)])
+
     return(data)
   }
 
   data_case <- parallelMap::parallelMap(add_section_information_case,
                                         case = unique(data_case$publisert)) #, level = "case")
   data_case <- dplyr::bind_rows(data_case)
-
-return(data_case)
+  return(data_case)
 }

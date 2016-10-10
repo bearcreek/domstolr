@@ -7,6 +7,7 @@
 #' @importFrom xml2 xml_find_all read_html
 #' @importFrom tidyr spread fill
 #' @importFrom dplyr rename bind_rows group_by mutate filter ungroup
+#' @importFrom readr read_lines
 #' @importFrom magrittr %>%
 #'
 #' @param file Single file to import.
@@ -24,10 +25,7 @@
 #' }
 #' @export
 domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", recursive = TRUE,
-                            meta_only = FALSE, verbose = FALSE) {
-
-  old_encodingopt <- options()$encoding
-  options(encoding = "UTF-8")
+                            meta_only = FALSE, match_judges = TRUE, verbose = FALSE) {
 
   if (!is.null(directory)) {
     file  <- list.files(path = gsub("^/+", "", directory), recursive = recursive,
@@ -35,7 +33,7 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
     if (length(file) == 0) stop("Unable to find any files.")
   }
 
-  data_all <- lapply(extract_data, file = file, meta_only = meta_only, verbose = verbose)
+  data_all <- lapply(file, extract_data, meta_only = meta_only, verbose = verbose, match_judges = match_judges)
 
   if (meta_only) {
     out <- as.data.frame(bind_rows(data_all))
@@ -52,17 +50,14 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
   names(meta_data) <- names(data_references[[1]])
   attr(out, "meta_data") <- meta_data
 
-  options(encoding = old_encodingopt)
-
   class(out) <- c("data.frame", "domstolr")
   return(out)
 }
 
-extract_data <- function(file, meta_only = FALSE, verbose = FALSE) {
+extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges = TRUE) {
 
   ## Split the html file into separate html snippets for each case.
-  file <- readLines(file, encoding = "UTF-8", warn = FALSE)
-  file <- enc2utf8(file)
+  file <- readr::read_lines(file)
   all_cases <- xml2::read_html(file, encoding = "UTF-8")
   all_cases <- rvest::html_nodes(all_cases, "body br ~ div")
 
@@ -137,7 +132,7 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE) {
   data_proceedings <- extract_data_case_proceedings(data_case)
 
   ## Judges
-  data_judges <- extract_data_judges(data_case)
+  data_judges <- extract_data_judges(data_case, match_judges = match_judges)
 
   ## Keywords
   data_keywords <- extract_data_keywords(data_case)

@@ -5,7 +5,8 @@
 \title{Import selections downloaded as html from Lovdata Pro (C)}
 \usage{
 domstolr_import(file = NULL, directory = NULL, regex = ".*.html$",
-  recursive = TRUE, meta_only = FALSE, verbose = FALSE)
+  recursive = TRUE, meta_only = FALSE, match_judges = TRUE,
+  verbose = FALSE)
 }
 \arguments{
 \item{file}{Single file to import.}

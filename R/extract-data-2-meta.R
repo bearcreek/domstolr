@@ -136,7 +136,7 @@ add_data_section <- function(data_case) {
       dplyr::mutate(section_judge = gsub("[dD]omm[ea]r[ne]* ", "", section_judge),
                     section_judge = gsub("[dD]elvis", "", section_judge),
                     section_judge = gsub("\\:|\\,|[kK]st ", "", section_judge),
-                    section_judge = gsub("Justit[ui]arius ", "", section_judge),
+                    section_judge = gsub("[jJ]ustit[ui]arius ", "", section_judge),
                     section_judge = gsub(" og ", "", section_judge),
                     section_judge = gsub("^ +| +$", "", section_judge)) %>%
       tidyr::fill(section_judge)
@@ -213,13 +213,15 @@ add_data_section <- function(data_case) {
                                      "^ *Jeg ser først på",
                                      "^ *Jeg ser slik på saken:",
                                      "^ *Høyesterett bemerker at "))
-      data$section[main_opinion] <- "Main opinion"
+      data$section[main_opinion[1]] <- "Main opinion"
 
       ## Judgement
       judgement <- find_section(c("^ *Jeg stemmer for denne",
+                                  "^ *Jeg stemmer etter dette for denne",
                                   "^ *Eg røystar etter dette",
-                                  "^ *Slutning:"))
-      data$section[judgement] <- "judgement"
+                                  "^ *Slutning:",
+                                  "^ *kjennelse:"))
+      data$section[judgement[1]] <- "judgement"
     }
 
     data <- tidyr::fill(data, section)

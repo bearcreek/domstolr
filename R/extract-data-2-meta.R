@@ -138,9 +138,7 @@ add_data_section <- function(data_case) {
                     section_judge = gsub("\\:|\\,|[kK]st ", "", section_judge),
                     section_judge = gsub("Justit[ui]arius ", "", section_judge),
                     section_judge = gsub(" og ", "", section_judge),
-                    section_judge = gsub("^ +| +$", "", section_judge),
-                    section_judge = strsplit(section_judge, " ")) %>%
-      tidyr::unnest() %>%
+                    section_judge = gsub("^ +| +$", "", section_judge)) %>%
       tidyr::fill(section_judge)
 
     ## Func to add to section using pattern. Expects data$tekst.
@@ -154,7 +152,7 @@ add_data_section <- function(data_case) {
     data$section[1] <- "syllabus"
 
     ## lower_court_excerpt
-    lower_court_excerpt <- find_section(c("^ *Av herredsrettens dom .*:$", 
+    lower_court_excerpt <- find_section(c("^ *Av herredsrettens dom .*:$",
                                           "^ *Av byrettens dom .*:$"))
     data$section[lower_court_excerpt] <- "lower_court_excerpt"
 
@@ -171,7 +169,7 @@ add_data_section <- function(data_case) {
                                      "^ *Egne bemerkninger",
                                      "^ *Jeg ser først på",
                                      "^ *Jeg ser slik på saken:"))
-      data$section[main_opinion] <- "Main opinion"
+      data$section[main_opinion[1]] <- "Main opinion"
 
       ## Votes
       votes_1 <- find_section(c("^ *Eg røystar etter dette",
@@ -220,7 +218,7 @@ add_data_section <- function(data_case) {
       ## Judgement
       judgement <- find_section(c("^ *Jeg stemmer for denne",
                                   "^ *Eg røystar etter dette",
-                                  "^ *Slutning":))
+                                  "^ *Slutning:"))
       data$section[judgement] <- "judgement"
     }
 

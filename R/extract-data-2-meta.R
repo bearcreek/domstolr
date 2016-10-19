@@ -64,6 +64,7 @@ extract_data_case_proceedings <- function(data_case) {
 }
 
 ## Judges (now matches with judges data set)
+
 extract_data_judges <- function(data_case, match_judges = TRUE) {
 
   judges <- lapply(unique(data_case$publisert), function(.id) {
@@ -93,7 +94,8 @@ extract_data_judges <- function(data_case, match_judges = TRUE) {
         filter(!(is.na(start) & is.na(end)),
                ifelse(is.na(start), TRUE, start < judges$dato[1]),
                ifelse(is.na(end), TRUE, end > judges$dato[1]))
-      judges <- judges %>%
+
+            judges <- judges %>%
         fuzzyjoin::stringdist_left_join(judges_elligable, by = c(judge = "name_last")) %>%
         dplyr::select(-judge) %>%
         dplyr::mutate(judge = name_last,
@@ -120,7 +122,7 @@ extract_data_keywords <- function(data_case) {
 ## decision it is and which judges that are speaking.
 add_data_section <- function(data_case) {
 
-  voting <- data_case$publisert[data_case$avsnitt != 1][grep("^ *Domm[ea]r [A-ZÆØÅ].*:", data_case$tekst[data_case$avsnitt != 1])]
+  voting <- data_case$publisert[data_case$case_paragraph != 1][grep("^ *Domm[ea]r [A-ZÆØÅ].*:", data_case$case_text[data_case$case_paragraph != 1])]
   voting <- unique(voting)
 
   add_section_information_case <- function(case) {
@@ -129,8 +131,8 @@ add_data_section <- function(data_case) {
 
     ## Judges speaking as section_judge
     data <- data %>%
-      dplyr::mutate(section_judge = ifelse(grepl("^ *Domm[ea]r[ne]* .*:.*$|^ *Justit[ui]arius .*:.*$|^ *Kst\\. domm[ea]r .*:.*$", tekst),
-                                           gsub("^ *(Domm[ea]r[ne]*|Justit[ui]arius|Kst\\. domm[ea]r) (.*?):.*$", "\\2", tekst), NA),
+      dplyr::mutate(section_judge = ifelse(grepl("^ *Domm[ea]r[ne]* .*:.*$|^ *Justit[ui]arius .*:.*$|^ *Kst\\. domm[ea]r .*:.*$", case_text),
+                                           gsub("^ *(Domm[ea]r[ne]*|Justit[ui]arius|Kst\\. domm[ea]r) (.*?):.*$", "\\2", case_text), NA),
                     section_judge = strsplit(gsub("\\.", "", section_judge), " og |, ")) %>%
       tidyr::unnest() %>%
       dplyr::mutate(section_judge = gsub("[dD]omm[ea]r[ne]* ", "", section_judge),
@@ -141,9 +143,9 @@ add_data_section <- function(data_case) {
                     section_judge = gsub("^ +| +$", "", section_judge)) %>%
       tidyr::fill(section_judge)
 
-    ## Func to add to section using pattern. Expects data$tekst.
+    ## Func to add to section using pattern. Expects data$case_text.
     find_section <- function(patterns) {
-      section_place <- as.numeric(unlist(sapply(patterns, grep, x = data$tekst)))
+      section_place <- as.numeric(unlist(sapply(patterns, grep, x = data$case_text)))
       section_place <- section_place[!is.na(section_place)]
       return(section_place)
     }

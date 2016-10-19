@@ -29,14 +29,14 @@ extract_data_html.sc_after_2003 <- function(.case, data_meta, all_tables, ...) {
   .case_data <- lapply(all_tables[2:length(all_tables)], function(.table) {
     if (is.null(.table)) return(NULL)
     .text <- rvest::html_text(.table)
-    .inner_case_data <- dplyr::data_frame(avsnitt = gsub("^\\((\\d+)\\).+", "(\\1)", .text),
-                                          tekst = gsub("^\\(\\d+\\)", "", .text)) %>%
-      dplyr::mutate(avsnitt = ifelse(avsnitt == tekst, NA, avsnitt),
-                    avsnitt = as.numeric(gsub("[^0-9.-]+", "", as.character(avsnitt)))) %>%
+    .inner_case_data <- dplyr::data_frame(case_paragraph = gsub("^\\((\\d+)\\).+", "(\\1)", .text),
+                                          case_text = gsub("^\\(\\d+\\)", "", .text)) %>%
+      dplyr::mutate(case_paragraph = ifelse(case_paragraph == case_text, NA, case_paragraph),
+                    case_paragraph = as.numeric(gsub("[^0-9.-]+", "", as.character(case_paragraph)))) %>%
       dplyr::bind_cols(data_meta)
 
     if (get_references) {
-      .case_references <- .extract_references(.table, .inner_case_data$avsnitt, "law")
+      .case_references <- .extract_references(.table, .inner_case_data$case_paragraph, "law")
     } else {
       .case_references <- NULL
     }
@@ -56,18 +56,18 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
   .text <- gsub("_", "", .text)
 
   keep <- which(!(.text == "") & grepl("\\w", .text))
-  .case_data <- dplyr::data_frame(avsnitt = 1:length(.text[keep]),
-                                  tekst = .text[keep])
+  .case_data <- dplyr::data_frame(case_paragraph = 1:length(.text[keep]),
+                                  case_text = .text[keep])
 
   ## If there are page numbers (e.g., "Side 1729") it probably means
   ## that the paragraph got cut off
-  page_ind <- grep("^Side *\\d+.*", .case_data$tekst)
+  page_ind <- grep("^Side *\\d+.*", .case_data$case_text)
   if (length(page_ind) > 0) {
-    for (ind in page_ind) .case_data$avsnitt[ind + 1] <- (ind - 1)
+    for (ind in page_ind) .case_data$case_paragraph[ind + 1] <- (ind - 1)
     .case_data <- .case_data %>%
-      dplyr::group_by(avsnitt) %>%
-      dplyr::filter(!avsnitt %in% page_ind) %>%
-      dplyr::summarize(tekst = paste0(tekst, collapse = "")) %>%
+      dplyr::group_by(case_paragraph) %>%
+      dplyr::filter(!case_paragraph %in% page_ind) %>%
+      dplyr::summarize(case_text = paste0(case_text, collapse = "")) %>%
       dplyr::ungroup()
   }
 
@@ -88,7 +88,7 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
 
 ## Takes the html data and extracts the reference. References within
 ## the html code are always links (<href>).
-.extract_references <- function(node, avsnitt = 1, type) {
+.extract_references <- function(node, case_paragraph = 1, type) {
   node <- node %>%
     xml2::xml_find_all(".//a[preceding-sibling::span]")
   ref_text <- rvest::html_text(node)
@@ -102,10 +102,10 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
                                    lov = NA,
                                    referanse = gsub(".*/forarbeid/(.+-\\d*-*\\d*-*\\d+).*", "\\1", ref_link_pre),
                                    paragraph = gsub(".*/(s\\d*)$", "\\1", ref_link_pre),
-                                   tekst = ref_text[grep("/forarbeid/", ref_link)],
+                                   case_text = ref_text[grep("/forarbeid/", ref_link)],
                                    link = ref_link_pre) %>%
         dplyr::mutate(paragraph = ifelse(paragraph == link, NA, paragraph),
-                      avsnitt = avsnitt)
+                      case_paragraph = case_paragraph)
     } else {
       ref_pre <- NULL
     }
@@ -118,9 +118,9 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
                                    paragraph = ifelse(grepl("§", ref_link_reg),
                                                       gsub(".*(§.+)$", "\\1", ref_link_reg),
                                                       NA),
-                                   tekst = ref_text[grep("/forskrift/", ref_link)],
+                                   case_text = ref_text[grep("/forskrift/", ref_link)],
                                    link = ref_link_reg) %>%
-        dplyr::mutate(avsnitt = avsnitt)
+        dplyr::mutate(case_paragraph = case_paragraph)
     } else {
       ref_reg <- NULL
     }
@@ -134,10 +134,10 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
                                    paragraph = ifelse(grepl("§", ref_link_law),
                                                       gsub(".*(§\\d+).*", "\\1", ref_link_law),
                                                       gsub(".*/(a.+)$", "\\1", ref_link_law)),
-                                   tekst = ref_text[grep("/lov/", ref_link)],
+                                   case_text = ref_text[grep("/lov/", ref_link)],
                                    link = ref_link_law) %>%
         dplyr::mutate(paragraph = ifelse(paragraph == link, NA, paragraph),
-                      avsnitt = avsnitt)
+                      case_paragraph = case_paragraph)
     } else {
       ref_law <- NULL
     }
@@ -151,10 +151,10 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
     if (length(ref_link_dec) > 0) {
       ref_dec <- dplyr::data_frame(type = "avgjorelse",
                                    sak = gsub("(.*)/.+$", "\\1", gsub("^.+avgjorelse/(.*)", "\\1", ref_link_dec)),
-                                   ref_avsnitt = gsub(".*/(.*)$", "\\1", gsub("^.+avgjorelse/(.*)", "\\1", ref_link_dec)),
-                                   tekst = ref_text[grep("/avgjorelse/", ref_link)],
+                                   ref_case_paragraph = gsub(".*/(.*)$", "\\1", gsub("^.+avgjorelse/(.*)", "\\1", ref_link_dec)),
+                                   case_text = ref_text[grep("/avgjorelse/", ref_link)],
                                    link = ref_link_dec[grep("/avgjorelse/", ref_link)]) %>%
-        dplyr::mutate(ref_avsnitt = ifelse(sak == ref_avsnitt, NA, ref_avsnitt))
+        dplyr::mutate(ref_case_paragraph = ifelse(sak == ref_case_paragraph, NA, ref_case_paragraph))
     } else {
       ref_dec <- NULL
     }

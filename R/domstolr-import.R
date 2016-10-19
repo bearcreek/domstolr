@@ -86,10 +86,10 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
       dplyr::mutate(publisert = data_meta$Publisert)
 
     data_case <- dplyr::bind_rows(data_extracted_inner) %>%
-      tidyr::fill(avsnitt) %>%
-      dplyr::group_by(avsnitt) %>%
-      dplyr::mutate(tekst = paste0(tekst, collapse = " ")) %>%
-      dplyr::filter(!duplicated(tekst)) %>%
+      tidyr::fill(case_paragraph) %>%
+      dplyr::group_by(case_paragraph) %>%
+      dplyr::mutate(case_text = paste0(case_text, collapse = " ")) %>%
+      dplyr::filter(!duplicated(case_text)) %>%
       dplyr::ungroup()
 
     return(list(data_case = data_case, data_references = data_references))

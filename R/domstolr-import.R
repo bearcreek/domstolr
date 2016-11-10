@@ -54,22 +54,22 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
   return(out)
 }
 
-print.domstolr <- function(data) {
-  cat("Norwegian Supreme Court Data (domstolr)\n", append = TRUE)
-  cat(paste0("Cases: ", length(unique(data$publisert)), "\n"))
-  cat(paste0("Date range (min, max): ", min(data$dato), ", ", max(data$dato), "\n"))
-  cat(paste0("Judges: ", length(unique(attr(data, "meta_data")$data_judges$judge)), "\n"))
-}
+## print.domstolr <- function(data) {
+##   cat("Norwegian Supreme Court Data (domstolr)\n", append = TRUE)
+##   cat(paste0("Cases: ", length(unique(data$publisert)), "\n"))
+##   cat(paste0("Date range (min, max): ", min(data$dato), ", ", max(data$dato), "\n"))
+##   cat(paste0("Judges: ", length(unique(attr(data, "meta_data")$data_judges$judge)), "\n"))
+## }
 
-plot.domstolr <- function(data) {
-  hist_data <- data$dato[!duplicated(data$publisert)]
-  hist(x = hist_data,
-       breaks = "q",
-       freq = TRUE,
-       main = "Number of cases by quarter",
-       xlab = "Date",
-       ylab = "Number of cases")
-}
+## plot.domstolr <- function(data) {
+##   hist_data <- data$dato[!duplicated(data$publisert)]
+##   hist(x = hist_data,
+##        breaks = "q",
+##        freq = TRUE,
+##        main = "Number of cases by quarter",
+##        xlab = "Date",
+##        ylab = "Number of cases")
+## }
 
 extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges = TRUE) {
 
@@ -79,8 +79,7 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
     xml2::read_html(encoding = "UTF-8") %>%
     rvest::html_nodes("body br ~ div")
 
-  if (verbose) message(paste0("\n", file), appendLF = FALSE)
-  if (verbose) message(paste("\nParsing", length(all_cases), "cases.\n"), appendLF = FALSE)
+  if (verbose) message(sprintf("\nFile: %s\nN Cases: %s\nNow parsing (one dot is one case).", file, length(all_cases)))
 
   ## Extract meta data, text, and references from the html code.
   ##
@@ -117,6 +116,8 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
   data_extracted <- parallelMap(extract_data_case,
                                 .case = all_cases,
                                 more.args = list(meta_only = meta_only, verbose = verbose))
+
+  if (verbose) message("\nFinished going through the html. Now extracting additional data.\n", appendLF = FALSE)
 
   ## Extract and clean case data
   data_case <- lapply(data_extracted, function(x) x$data_case) %>% bind_rows()
@@ -161,6 +162,7 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
   data_case <- add_data_section(data_case, data_judges)
 
   ## Return all data
+  if (verbose) message("Done.\n", appendLF = FALSE)
   out <- list(data_case = data_case,
               attached = list(data_references = data_references,
                               data_parties = data_parties,

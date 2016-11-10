@@ -26,6 +26,13 @@ extract_data_html <- function(.case, data_meta, all_tables, verbose) {
 ## official paragraph within the court decision
 extract_data_html.sc_after_2003 <- function(.case, data_meta, all_tables, ...) {
   get_references <- TRUE
+  if (length(all_tables) == 1) {
+    .case_data <- dplyr::data_frame(avsnitt = 0,
+                                    tekst = "")
+    .case_data <- suppressWarnings(cbind(.case_data, data_meta))
+    attr(.case_data, ".case_references") <- NULL
+    return(.case_data)
+  }
   .case_data <- lapply(all_tables[2:length(all_tables)], function(.table) {
     if (is.null(.table)) return(NULL)
     .text <- rvest::html_text(.table)
@@ -51,11 +58,26 @@ extract_data_html.sc_after_2003 <- function(.case, data_meta, all_tables, ...) {
 ## reference where made
 extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) {
   get_references <- TRUE
-  nodes <- xml2::xml_find_all(.case, ".//p[preceding-sibling::hr] | .//table[preceding-sibling::hr]")
+  nodes <- xml2::xml_find_all(.case, ".//p[preceding-sibling::div[@align='center']] | .//table[preceding-sibling::div[@align='center']]")
   .text <- rvest::html_text(nodes)
   .text <- gsub("_", "", .text)
 
   keep <- which(!(.text == "") & grepl("\\w", .text))
+  if (length(keep) == 0) {
+    .case_data <- dplyr::data_frame(avsnitt = 0,
+                                    tekst = "")
+    .case_data <- suppressWarnings(cbind(.case_data, data_meta))
+    ## .case_references <- dplyr::data_frame(type = "",
+    ##                                       lov = ""
+    ##                                       referanse = "",
+    ##                                       paragraph = "",
+    ##                                       tekst = "",
+    ##                                       link = "",
+    ##                                       avsnitt = 0)
+    attr(.case_data, ".case_references") <- NULL
+    return(.case_data)
+  }
+
   .case_data <- dplyr::data_frame(avsnitt = 1:length(.text[keep]),
                                   avsnitt_org = 1:length(.text[keep]),
                                   tekst = .text[keep])
@@ -89,8 +111,7 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
   }
   .case_data <- suppressWarnings(cbind(.case_data, data_meta))
 
-  paragraph_link <- .case_data %>%
-    dplyr::select(avsnitt, avsnitt_org)
+  paragraph_link <- dplyr::select(.case_data, avsnitt, avsnitt_org)
   if (is.list(.case_data$avsnitt_org)) paragraph_link <- tidyr::unnest(paragraph_link)
 
   if (get_references) {

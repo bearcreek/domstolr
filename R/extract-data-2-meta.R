@@ -37,11 +37,12 @@ add_data_decision_type <- function(data_case) {
   type <- tolower(type)
   type <- strsplit(type, " ")
 
-  data_case <- data_case %>%
+  tt <- data_case %>%
     dplyr::mutate(type = type) %>%
     tidyr::unnest(type) %>%
     dplyr::mutate(type_value = 1) %>%
     tidyr::spread(type, type_value, fill = 0)
+
   return(data_case)
 }
 

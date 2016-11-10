@@ -54,6 +54,23 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
   return(out)
 }
 
+print.domstolr <- function(data) {
+  cat("Norwegian Supreme Court Data (domstolr)\n", append = TRUE)
+  cat(paste0("Cases: ", length(unique(data$publisert)), "\n"))
+  cat(paste0("Date range (min, max): ", min(data$dato), ", ", max(data$dato), "\n"))
+  cat(paste0("Judges: ", length(unique(attr(data, "meta_data")$data_judges$judge)), "\n"))
+}
+
+plot.domstolr <- function(data) {
+  hist_data <- data$dato[!duplicated(data$publisert)]
+  hist(x = hist_data,
+       breaks = "q",
+       freq = TRUE,
+       main = "Number of cases by quarter",
+       xlab = "Date",
+       ylab = "Number of cases")
+}
+
 extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges = TRUE) {
 
   ## Split the html file into separate html snippets for each case.

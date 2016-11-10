@@ -57,32 +57,54 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
 
   keep <- which(!(.text == "") & grepl("\\w", .text))
   .case_data <- dplyr::data_frame(avsnitt = 1:length(.text[keep]),
+                                  avsnitt_org = 1:length(.text[keep]),
                                   tekst = .text[keep])
 
   ## If there are page numbers (e.g., "Side 1729") it probably means
-  ## that the paragraph got cut off
+  ## that the paragraph got cut off, so we glue the paragaph on each
+  ## side together
   page_ind <- grep("^Side *\\d+.*", .case_data$tekst)
-  if (length(page_ind) > 0) {
-    for (ind in page_ind) .case_data$avsnitt[ind + 1] <- (ind - 1)
-    .case_data <- .case_data %>%
-      dplyr::group_by(avsnitt) %>%
-      dplyr::filter(!avsnitt %in% page_ind) %>%
-      dplyr::summarize(tekst = paste0(tekst, collapse = "")) %>%
-      dplyr::ungroup()
+  page_ind <- page_ind[!is.na(page_ind)]
+  page_ind_org <- page_ind
+  if (!is.null(page_ind)) {
+    done <- FALSE
+    x <- 1
+    while (!done) {
+      ind <- page_ind[x]
+      if (!is.na(ind)) {
+        nshift <- ifelse(ind == 1, 1, 2)
+        .case_data <- .case_data %>%
+          dplyr::filter(avsnitt != ind) %>%
+          dplyr::mutate(avsnitt = ifelse(avsnitt %in% (ind + 1):max(avsnitt), avsnitt - nshift, avsnitt)) %>%
+          dplyr::group_by(avsnitt) %>%
+          dplyr::summarize(avsnitt_org = list(avsnitt_org),
+                           tekst = paste0(tekst, collapse = " LIMT SAMMEN HER ")) %>%
+          dplyr::ungroup() %>%
+          dplyr::mutate(avsnitt_org = lapply(avsnitt_org, function(x) unlist(x)))
+        page_ind <- page_ind - nshift
+      }
+      x <- x + 1
+      if (x > length(page_ind)) done <- TRUE
+    }
   }
+  .case_data <- suppressWarnings(cbind(.case_data, data_meta))
 
-  .case_data <- lapply(1:nrow(.case_data), function(x)
-    dplyr::bind_cols(.case_data[x, ], data_meta)) %>%
-    dplyr::bind_rows()
+  paragraph_link <- .case_data %>%
+    dplyr::select(avsnitt, avsnitt_org)
+  if (is.list(.case_data$avsnitt_org)) paragraph_link <- tidyr::unnest(paragraph_link)
 
   if (get_references) {
     .case_references <- lapply(1:length(keep), function(x)
       .extract_references(nodes[keep][x], x, "law")) %>%
       dplyr::bind_rows()
+    if (nrow(.case_references) > 0) {  # correct avsnitt after shift
+      .case_references$avsnitt <- paragraph_link$avsnitt[match(.case_references$avsnitt, paragraph_link$avsnitt_org)]
+    }
   } else {
     .case_references <- NULL
   }
   attr(.case_data, ".case_references") <- .case_references
+  .case_data <- select(.case_data, -avsnitt_org)
   return(.case_data)
 }
 
@@ -161,5 +183,3 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
     return(ref_dec)
   }
 }
-
-

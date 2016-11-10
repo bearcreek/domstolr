@@ -12,16 +12,16 @@
 add_data_parties <- function(data_case) {
   data_case <- data_case %>%
   dplyr::mutate(part_a = gsub(" mot .+$", "", data_case$parter),
-           part_b = gsub("^.+ mot ", "", data_case$parter))
+                part_b = gsub("^.+ mot ", "", data_case$parter))
   return(data_case)
 }
 
 extract_data_parties <- function(data_case) {
   parter <- lapply(c("part_a", "part_b"), function(y) {
     dplyr::data_frame(id = data_case$publisert,
-               part = data_case[[y]],
-               side = y,
-               advokat = lapply(strsplit(data_case[[y]], "\\("), function(x) gsub(").*$", "", x[grep("\\)", x)]))) %>%
+                      part = data_case[[y]],
+                      side = y,
+                      advokat = lapply(strsplit(data_case[[y]], "\\("), function(x) gsub(").*$", "", x[grep("\\)", x)]))) %>%
       tidyr::unnest(advokat)
   })
   parter <- dplyr::bind_rows(parter)
@@ -117,8 +117,8 @@ extract_data_keywords <- function(data_case) {
 }
 
 ## Section: Extract properties of the text, such as what part of the
-## decision it is and which judges that are speaking.
-add_data_section <- function(data_case) {
+# decision it is and which judges that are speaking.
+add_data_section <- function(data_case, data_judges) {
 
   voting <- data_case$publisert[data_case$avsnitt != 1][grep("^ *Domm[ea]r [A-ZÆØÅ].*:", data_case$tekst[data_case$avsnitt != 1])]
   voting <- unique(voting)
@@ -138,8 +138,11 @@ add_data_section <- function(data_case) {
                     section_judge = gsub("\\:|\\,|[kK]st ", "", section_judge),
                     section_judge = gsub("[jJ]ustit[ui]arius ", "", section_judge),
                     section_judge = gsub(" og ", "", section_judge),
-                    section_judge = gsub("^ +| +$", "", section_judge)) %>%
-      tidyr::fill(section_judge)
+                    section_judge = gsub("^ +| +$", "", section_judge))
+    if (is.na(data$section_judge[1])) {
+      data$section_judge[1] <- data_judges$judge[data_judges$id == case][1]
+    }
+    data <- tidyr::fill(data, section_judge)
 
     ## Func to add to section using pattern. Expects data$tekst.
     find_section <- function(patterns) {
@@ -169,7 +172,8 @@ add_data_section <- function(data_case) {
                                      "^ *Egne bemerkninger",
                                      "^ *Jeg ser først på",
                                      "^ *Jeg ser slik på saken:"))
-      data$section[main_opinion[1]] <- "Main opinion"
+      main_opinion <- main_opinion[1]
+      data$section[main_opinion] <- "Main opinion"
 
       ## Votes
       votes_1 <- find_section(c("^ *Eg røystar etter dette",
@@ -179,10 +183,12 @@ add_data_section <- function(data_case) {
                                 "^ *Etter dette stemmer jeg for",
                                 "^Da jeg er i mindretall, former jeg ingen konklusjon"))
       votes_1 <- votes_1[1]
-      votes <- find_section(c("^ *Domm[ea]r[ne]* ",
-                              "^ *Justituarius ",
-                              "^ *Justitiarius ",
-                              "^ *Kst domm[ea]r "))
+      votes <- find_section("^ *Domm[ea]r[ne]* .*:.*$|^ *Justit[ui]arius .*:.*$|^ *Kst\\. domm[ea]r .*:.*$")
+
+      ## votes <- find_section(c("^ *Domm[ea]r[ne]* ",
+      ##                         "^ *Justituarius ",
+      ##                         "^ *Justitiarius ",
+      ##                         "^ *Kst domm[ea]r "))
       if (length(main_opinion > 0)) {
         votes <- votes[votes > max(main_opinion)]
       } else {
@@ -236,10 +242,15 @@ add_data_section <- function(data_case) {
       mutate(section_judge_matches = ifelse(section_judge %in% judges_elligable$name_last, 1, 0),
              section_judge_JNR = judges_elligable$JNR[match(section_judge, judges_elligable$name_last)],
              section_judge_PNR = judges_elligable$PNR[match(section_judge, judges_elligable$name_last)])
+    data$section_judge <- ifelse(data$section == "judgement", NA, data$section_judge)
+    data$section_judge_JNR <- ifelse(data$section == "judgement", NA, data$section_judge_JNR)
+    data$section_judge_PNR <- ifelse(data$section == "judgement", NA, data$section_judge_PNR)
 
+    ## Minor fixes from the page splitter f'ing up
+    data$tekst <- gsub("dennekjennelse", "denne kjennelse", data$tekst)
+    data$tekst <- gsub("dennedom", "denne dom", data$tekst)
     return(data)
   }
-
   data_case <- parallelMap::parallelMap(add_section_information_case,
                                         case = unique(data_case$publisert)) #, level = "case")
   data_case <- dplyr::bind_rows(data_case)

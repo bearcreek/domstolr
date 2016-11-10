@@ -57,11 +57,13 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
 extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges = TRUE) {
 
   ## Split the html file into separate html snippets for each case.
-  file <- readr::read_lines(file)
-  all_cases <- xml2::read_html(file, encoding = "UTF-8")
-  all_cases <- rvest::html_nodes(all_cases, "body br ~ div")
+  all_cases <- file %>%
+    readr::read_lines() %>%
+    xml2::read_html(encoding = "UTF-8") %>%
+    rvest::html_nodes("body br ~ div")
 
-  if (verbose) message(paste("\nParsing", length(all_cases), "cases: "), appendLF = FALSE)
+  if (verbose) message(file)
+  if (verbose) message(paste("\nParsing", length(all_cases), "cases.\n"), appendLF = FALSE)
 
   ## Extract meta data, text, and references from the html code.
   ##
@@ -97,7 +99,7 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
 
   data_extracted <- parallelMap(extract_data_case,
                                 .case = all_cases,
-                                more.args = list(meta_only = meta_only, verbose = verbose)) #, level = "case")
+                                more.args = list(meta_only = meta_only, verbose = verbose))
 
   ## Extract and clean case data
   data_case <- lapply(data_extracted, function(x) x$data_case) %>% bind_rows()
@@ -139,7 +141,7 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
 
   ## Section: Extract properties of the text, such as which judges
   ## that are speaking.
-  data_case <- add_data_section(data_case)
+  data_case <- add_data_section(data_case, data_judges)
 
   ## Return all data
   out <- list(data_case = data_case,

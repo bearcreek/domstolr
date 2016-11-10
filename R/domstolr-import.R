@@ -62,7 +62,7 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
     xml2::read_html(encoding = "UTF-8") %>%
     rvest::html_nodes("body br ~ div")
 
-  if (verbose) message(file)
+  if (verbose) message(paste0("\n", file), appendLF = FALSE)
   if (verbose) message(paste("\nParsing", length(all_cases), "cases.\n"), appendLF = FALSE)
 
   ## Extract meta data, text, and references from the html code.

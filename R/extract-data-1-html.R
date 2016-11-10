@@ -67,13 +67,6 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
     .case_data <- dplyr::data_frame(avsnitt = 0,
                                     tekst = "")
     .case_data <- suppressWarnings(cbind(.case_data, data_meta))
-    ## .case_references <- dplyr::data_frame(type = "",
-    ##                                       lov = ""
-    ##                                       referanse = "",
-    ##                                       paragraph = "",
-    ##                                       tekst = "",
-    ##                                       link = "",
-    ##                                       avsnitt = 0)
     attr(.case_data, ".case_references") <- NULL
     return(.case_data)
   }

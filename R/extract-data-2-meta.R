@@ -37,7 +37,7 @@ add_data_decision_type <- function(data_case) {
   type <- tolower(type)
   type <- strsplit(type, " ")
 
-  tt <- data_case %>%
+  data_case <- data_case %>%
     dplyr::mutate(type = type) %>%
     tidyr::unnest(type) %>%
     dplyr::mutate(type_value = 1) %>%

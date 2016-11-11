@@ -93,7 +93,7 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
           dplyr::mutate(avsnitt = ifelse(avsnitt %in% (ind + 1):max(avsnitt), avsnitt - nshift, avsnitt)) %>%
           dplyr::group_by(avsnitt) %>%
           dplyr::summarize(avsnitt_org = list(avsnitt_org),
-                           tekst = paste0(tekst, collapse = " LIMT SAMMEN HER ")) %>%
+                           tekst = paste0(tekst, collapse = " ")) %>%
           dplyr::ungroup() %>%
           dplyr::mutate(avsnitt_org = lapply(avsnitt_org, function(x) unlist(x)))
         page_ind <- page_ind - nshift

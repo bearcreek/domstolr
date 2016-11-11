@@ -156,8 +156,12 @@ add_data_section <- function(data_case, data_judges) {
     data$section[1] <- "syllabus"
 
     ## lower_court_excerpt
-    lower_court_excerpt <- find_section(c("^ *Av herredsrettens dom .*:$",
-                                          "^ *Av byrettens dom .*:$"))
+    lower_court_excerpt <- find_section(c("^ *Av herredsrettens dom .*:*$",
+                                          "^ *Av byrettens dom .*:*$",
+                                          "^ *Av lagmannsrettens dom .*:*$",
+                                          "^ *Av underskjønnet .*:*$",
+                                          "^ *Av overskjønnet .*:*$",
+                                          "^ *Av forhørsrettens dom .*:*$"))
     data$section[lower_court_excerpt] <- "lower_court_excerpt"
 
     if (case %in% voting) {
@@ -172,7 +176,10 @@ add_data_section <- function(data_case, data_judges) {
                                      "^ *Eg er komen til",
                                      "^ *Egne bemerkninger",
                                      "^ *Jeg ser først på",
-                                     "^ *Jeg ser slik på saken:"))
+                                     "^ *Jeg ser slik på saken:",
+                                     "^ *Jeg er når det gjelder utmålingen ",
+                                     "^ *Jeg er blitt stående ved at anken bør tas til følge",
+                                     "^ *Jeg finner det naturlig å behandle anken over saksbehandlingen først"))
       main_opinion <- main_opinion[1]
       data$section[main_opinion] <- "Main opinion"
 

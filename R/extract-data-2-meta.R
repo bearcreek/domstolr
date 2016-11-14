@@ -255,7 +255,10 @@ add_data_section <- function(data_case, data_judges) {
     data$section_judge <- ifelse(data$section == "judgement", NA, data$section_judge)
     data$section_judge_JNR <- ifelse(data$section == "judgement", NA, data$section_judge_JNR)
     data$section_judge_PNR <- ifelse(data$section == "judgement", NA, data$section_judge_PNR)
-
+    data$section_judge <- ifelse(data$section == "lower_court_excerpt", NA, data$section_judge)
+    data$section_judge_JNR <- ifelse(data$section == "lower_court_excerpt", NA, data$section_judge_JNR)
+    data$section_judge_PNR <- ifelse(data$section == "lower_court_excerpt", NA, data$section_judge_PNR)
+    
     ## Minor fixes from the page splitter f'ing up
     data$tekst <- gsub("dennekjennelse", "denne kjennelse", data$tekst)
     data$tekst <- gsub("dennedom", "denne dom", data$tekst)

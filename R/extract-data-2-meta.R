@@ -174,6 +174,7 @@ add_data_section <- function(data_case, data_judges) {
                                      "^ *Jeg bemerker at saken",
                                      "^ *Mitt syn på saken",
                                      "^ *Eg er komen til",
+                                     "^ *Mitt syn på saka",
                                      "^ *Egne bemerkninger",
                                      "^ *Jeg ser først på",
                                      "^ *Jeg ser slik på saken:",
@@ -233,6 +234,7 @@ add_data_section <- function(data_case, data_judges) {
       judgement <- find_section(c("^ *Jeg stemmer for denne",
                                   "^ *Jeg stemmer etter dette for denne",
                                   "^ *Eg røystar etter dette",
+                                  "^ *Eg røystar for",
                                   "^ *Slutning:",
                                   "^ *kjennelse:"))
       data$section[judgement[1]] <- "judgement"
@@ -257,6 +259,7 @@ add_data_section <- function(data_case, data_judges) {
     ## Minor fixes from the page splitter f'ing up
     data$tekst <- gsub("dennekjennelse", "denne kjennelse", data$tekst)
     data$tekst <- gsub("dennedom", "denne dom", data$tekst)
+    data$tekst <- gsub("slikdom", "slik dom", data$tekst)
     return(data)
   }
   data_case <- parallelMap::parallelMap(add_section_information_case,

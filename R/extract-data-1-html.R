@@ -12,7 +12,7 @@ extract_data_html <- function(.case, data_meta, all_tables, verbose) {
   if (verbose) message(".", appendLF = FALSE)
 
   ## First find what method to use
-  date <- as.numeric(gsub("^(\\d{4}).*", "\\1", data_meta$Dato))
+  date <- as.numeric(gsub("^(\\d{4}).*", "\\1", data_meta$case_date))
   if (date >= 2003)
     class(.case) <- c("sc_after_2003", class(.case))
   else
@@ -27,8 +27,8 @@ extract_data_html <- function(.case, data_meta, all_tables, verbose) {
 extract_data_html.sc_after_2003 <- function(.case, data_meta, all_tables, ...) {
   get_references <- TRUE
   if (length(all_tables) == 1) {
-    .case_data <- dplyr::data_frame(avsnitt = 0,
-                                    tekst = "")
+    .case_data <- dplyr::data_frame(paragraph = 0,
+                                    text = "")
     .case_data <- suppressWarnings(cbind(.case_data, data_meta))
     attr(.case_data, ".case_references") <- NULL
     return(.case_data)
@@ -36,14 +36,13 @@ extract_data_html.sc_after_2003 <- function(.case, data_meta, all_tables, ...) {
   .case_data <- lapply(all_tables[2:length(all_tables)], function(.table) {
     if (is.null(.table)) return(NULL)
     .text <- rvest::html_text(.table)
-    .inner_case_data <- dplyr::data_frame(avsnitt = gsub("^\\((\\d+)\\).+", "(\\1)", .text),
-                                          tekst = gsub("^\\(\\d+\\)", "", .text)) %>%
-      dplyr::mutate(avsnitt = ifelse(avsnitt == tekst, NA, avsnitt),
-                    avsnitt = as.numeric(gsub("[^0-9.-]+", "", as.character(avsnitt)))) %>%
+    .inner_case_data <- dplyr::data_frame(paragraph = gsub("^\\((\\d+)\\).+", "(\\1)", .text),
+                                          text = gsub("^\\(\\d+\\)", "", .text)) %>%
+      dplyr::mutate(paragraph = ifelse(paragraph == text, NA, paragraph),
+                    paragraph = as.numeric(gsub("[^0-9.-]+", "", as.character(paragraph)))) %>%
       dplyr::bind_cols(data_meta)
-
     if (get_references) {
-      .case_references <- .extract_references(.table, .inner_case_data$avsnitt, "law")
+      .case_references <- .extract_references(.table, .inner_case_data$paragraph, "law")
     } else {
       .case_references <- NULL
     }
@@ -64,21 +63,21 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
 
   keep <- which(!(.text == "") & grepl("\\w", .text))
   if (length(keep) == 0) {
-    .case_data <- dplyr::data_frame(avsnitt = 0,
-                                    tekst = "")
+    .case_data <- dplyr::data_frame(paragraph = 0,
+                                    text = "")
     .case_data <- suppressWarnings(cbind(.case_data, data_meta))
     attr(.case_data, ".case_references") <- NULL
     return(.case_data)
   }
 
-  .case_data <- dplyr::data_frame(avsnitt = 1:length(.text[keep]),
-                                  avsnitt_org = 1:length(.text[keep]),
-                                  tekst = .text[keep])
+  .case_data <- dplyr::data_frame(paragraph = 1:length(.text[keep]),
+                                  paragraph_org = 1:length(.text[keep]),
+                                  text = .text[keep])
 
   ## If there are page numbers (e.g., "Side 1729") it probably means
   ## that the paragraph got cut off, so we glue the paragaph on each
   ## side together
-  page_ind <- grep("^Side *\\d+.*", .case_data$tekst)
+  page_ind <- grep("^Side *\\d+.*", .case_data$text)
   page_ind <- page_ind[!is.na(page_ind)]
   page_ind_org <- page_ind
   if (!is.null(page_ind)) {
@@ -89,13 +88,13 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
       if (!is.na(ind)) {
         nshift <- ifelse(ind == 1, 1, 2)
         .case_data <- .case_data %>%
-          dplyr::filter(avsnitt != ind) %>%
-          dplyr::mutate(avsnitt = ifelse(avsnitt %in% (ind + 1):max(avsnitt), avsnitt - nshift, avsnitt)) %>%
-          dplyr::group_by(avsnitt) %>%
-          dplyr::summarize(avsnitt_org = list(avsnitt_org),
-                           tekst = paste0(tekst, collapse = " LIMT SAMMEN HER ")) %>%
+          dplyr::filter(paragraph != ind) %>%
+          dplyr::mutate(paragraph = ifelse(paragraph %in% (ind + 1):max(paragraph), paragraph - nshift, paragraph)) %>%
+          dplyr::group_by(paragraph) %>%
+          dplyr::summarize(paragraph_org = list(paragraph_org),
+                           text = paste0(text, collapse = " ")) %>%
           dplyr::ungroup() %>%
-          dplyr::mutate(avsnitt_org = lapply(avsnitt_org, function(x) unlist(x)))
+          dplyr::mutate(paragraph_org = lapply(paragraph_org, function(x) unlist(x)))
         page_ind <- page_ind - nshift
       }
       x <- x + 1
@@ -104,21 +103,21 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
   }
   .case_data <- suppressWarnings(cbind(.case_data, data_meta))
 
-  paragraph_link <- dplyr::select(.case_data, avsnitt, avsnitt_org)
-  if (is.list(.case_data$avsnitt_org)) paragraph_link <- tidyr::unnest(paragraph_link)
+  paragraph_link <- dplyr::select(.case_data, paragraph, paragraph_org)
+  if (is.list(.case_data$paragraph_org)) paragraph_link <- tidyr::unnest(paragraph_link)
 
   if (get_references) {
     .case_references <- lapply(1:length(keep), function(x)
       .extract_references(nodes[keep][x], x, "law")) %>%
       dplyr::bind_rows()
-    if (nrow(.case_references) > 0) {  # correct avsnitt after shift
-      .case_references$avsnitt <- paragraph_link$avsnitt[match(.case_references$avsnitt, paragraph_link$avsnitt_org)]
+    if (nrow(.case_references) > 0) {  # correct paragraph after shift
+      .case_references$paragraph <- paragraph_link$paragraph[match(.case_references$paragraph, paragraph_link$paragraph_org)]
     }
   } else {
     .case_references <- NULL
   }
   attr(.case_data, ".case_references") <- .case_references
-  .case_data <- select(.case_data, -avsnitt_org)
+  .case_data <- select(.case_data, -paragraph_org)
   return(.case_data)
 }
 

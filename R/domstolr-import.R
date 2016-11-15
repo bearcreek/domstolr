@@ -41,6 +41,26 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
     return(out)
   }
 
+
+  data_paragraph <- data_all$data_case
+
+  data_case <- data_all$data_case %>%
+    group_by(publisert, forfatter, instans, parter, publisert, saksgang, sammendrag, stikkord, part_a, part_b, dom, kjennelse, type) %>%
+    summarize(text = paste0(tekst, collapse = " ")) %>%
+    ungroup()
+
+
+  class(out) <- "domstolr"
+
+  meta <- list(imported_on = Sys.time(),
+               file = file,
+               meta_only = meta_only,
+               match_judges = match_judges)
+
+  ## Number of cases,
+
+  str(out)
+
   out <- lapply(data_all, function(x) x$data_case)
   out <- dplyr::bind_rows(out)
 
@@ -93,7 +113,15 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
       rvest::html_table() %>%
       dplyr::rename(variable = X1,
                     value = X2) %>%
-      tidyr::spread(variable, value)
+      tidyr::spread(variable, value) %>%
+      rename(case_date = Dato,
+             case_citation = Publisert,
+             case_judges = Forfatter,
+             case_instance = Instans,
+             case_parties = Parter,
+             case_history = Saksgang,
+             case_summary = Sammendrag,
+             case_keywords = Stikkord)
 
     if (meta_only) return(list(data_meta = data_meta))
 
@@ -119,7 +147,7 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
 
   if (verbose) message("\nFinished going through the html. Now extracting additional data.\n", appendLF = FALSE)
 
-  ## Extract and clean case data
+  ## Extract and clean text data
   data_case <- lapply(data_extracted, function(x) x$data_case) %>% bind_rows()
   names(data_case) <- gsub(" ", "_", tolower(names(data_case)))
   data_case$dato <- as.Date(data_case$dato)
@@ -127,6 +155,11 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
   ## Extract and clean reference data
   data_references <- lapply(data_extracted, function(x) x$data_references) %>% bind_rows()
   names(data_references) <- gsub(" ", "_", tolower(names(data_references)))
+
+  ## ## Extract and clean case-level data
+  ## data_meta <- lapply(data_extracted, function(x) x$data_meta) %>% bind_rows()
+  ## names(data_meta) <- gsub(" ", "_", tolower(names(data_meta)))
+  ## data_meta$dato <- as.Date(data_meta$dato)
 
   ## Extract additional meta data from the text and references.
   ##
@@ -164,10 +197,10 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
   ## Return all data
   if (verbose) message("Done.\n", appendLF = FALSE)
   out <- list(data_case = data_case,
-              attached = list(data_references = data_references,
-                              data_parties = data_parties,
-                              data_proceedings = data_proceedings,
-                              data_judges = data_judges,
-                              data_keywords = data_keywords))
+              data_references = data_references,
+              data_parties = data_parties,
+              data_proceedings = data_proceedings,
+              data_judges = data_judges,
+              data_keywords = data_keywords)
   return(out)
 }

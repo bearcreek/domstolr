@@ -156,8 +156,12 @@ add_data_section <- function(data_case, data_judges) {
     data$section[1] <- "syllabus"
 
     ## lower_court_excerpt
-    lower_court_excerpt <- find_section(c("^ *Av herredsrettens dom .*:$",
-                                          "^ *Av byrettens dom .*:$"))
+    lower_court_excerpt <- find_section(c("^ *Av herredsrettens dom .*:*$",
+                                          "^ *Av byrettens dom .*:*$",
+                                          "^ *Av lagmannsrettens dom .*:*$",
+                                          "^ *Av underskjønnet .*:*$",
+                                          "^ *Av overskjønnet .*:*$",
+                                          "^ *Av forhørsrettens dom .*:*$"))
     data$section[lower_court_excerpt] <- "lower_court_excerpt"
 
     if (case %in% voting) {
@@ -170,9 +174,13 @@ add_data_section <- function(data_case, data_judges) {
                                      "^ *Jeg bemerker at saken",
                                      "^ *Mitt syn på saken",
                                      "^ *Eg er komen til",
+                                     "^ *Mitt syn på saka",
                                      "^ *Egne bemerkninger",
                                      "^ *Jeg ser først på",
-                                     "^ *Jeg ser slik på saken:"))
+                                     "^ *Jeg ser slik på saken:",
+                                     "^ *Jeg er når det gjelder utmålingen ",
+                                     "^ *Jeg er blitt stående ved at anken bør tas til følge",
+                                     "^ *Jeg finner det naturlig å behandle anken over saksbehandlingen først"))
       main_opinion <- main_opinion[1]
       data$section[main_opinion] <- "Main opinion"
 
@@ -226,6 +234,7 @@ add_data_section <- function(data_case, data_judges) {
       judgement <- find_section(c("^ *Jeg stemmer for denne",
                                   "^ *Jeg stemmer etter dette for denne",
                                   "^ *Eg røystar etter dette",
+                                  "^ *Eg røystar for",
                                   "^ *Slutning:",
                                   "^ *kjennelse:"))
       data$section[judgement[1]] <- "judgement"
@@ -246,10 +255,14 @@ add_data_section <- function(data_case, data_judges) {
     data$section_judge <- ifelse(data$section == "judgement", NA, data$section_judge)
     data$section_judge_JNR <- ifelse(data$section == "judgement", NA, data$section_judge_JNR)
     data$section_judge_PNR <- ifelse(data$section == "judgement", NA, data$section_judge_PNR)
-
+    data$section_judge <- ifelse(data$section == "lower_court_excerpt", NA, data$section_judge)
+    data$section_judge_JNR <- ifelse(data$section == "lower_court_excerpt", NA, data$section_judge_JNR)
+    data$section_judge_PNR <- ifelse(data$section == "lower_court_excerpt", NA, data$section_judge_PNR)
+    
     ## Minor fixes from the page splitter f'ing up
     data$tekst <- gsub("dennekjennelse", "denne kjennelse", data$tekst)
     data$tekst <- gsub("dennedom", "denne dom", data$tekst)
+    data$tekst <- gsub("slikdom", "slik dom", data$tekst)
     return(data)
   }
   data_case <- parallelMap::parallelMap(add_section_information_case,

@@ -21,11 +21,11 @@
 #' @examples
 #'\dontrun{
 #' domstol_data <- domstolr_import(directiory = "data/")
-#' save(data, file = "domstol_data.RData")
+#' save(domstol_data, file = "domstol_data.RData")
 #' }
 #' @export
 domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", recursive = TRUE,
-                            meta_only = FALSE, match_judges = TRUE, verbose = FALSE) {
+                            meta_only = FALSE, match_judges = TRUE, verbose = TRUE) {
 
   if (!is.null(directory)) {
     file  <- list.files(path = gsub("^/+", "", directory), recursive = recursive,
@@ -124,16 +124,42 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
       rvest::html_table() %>%
       dplyr::rename(variable = X1,
                     value = X2) %>%
-      tidyr::spread(variable, value) %>%
-      rename(case_date = Dato,
-             case_citation = Publisert,
-             case_judges = Forfatter,
-             case_instance = Instans,
-             case_parties = Parter,
-             case_history = Saksgang,
-             case_summary = Sammendrag,
-             case_keywords = Stikkord) %>%
-      mutate(case_date = as.Date(case_date))
+      tidyr::spread(variable, value)
+
+    if ("Dato" %in% names(data_meta)) {
+      data_meta <- rename(data_meta, case_date = Dato)
+
+      if (data_meta$case_date == "1971-09-00")
+        data_meta <- mutate(data_meta, case_date = "1971-09-01")
+      if (data_meta$case_date == "1966-03")
+        data_meta <- mutate(data_meta, case_date = "1966-03-01")
+      if (nchar(data_meta$case_date) == 4)
+        data_meta <- mutate(data_meta, case_date = paste0(case_date, "-01-01"))
+      if (grepl("[Uu]datert|^1967-00-00$", data_meta$case_date))
+        data_meta <- mutate(data_meta, case_date = paste0(substr(case_date, 1, 4), "-1-1"))
+
+        data_meta <- mutate(data_meta, case_date = as.Date(case_date))
+    }
+    if ("Publisert" %in% names(data_meta))
+      data_meta <- rename(data_meta, case_citation = Publisert)
+
+    if ("Forfatter" %in% names(data_meta))
+      data_meta <- rename(data_meta, case_judges = Forfatter)
+
+    if ("Instans" %in% names(data_meta))
+      data_meta <- rename(data_meta, case_instance = Instans)
+
+    if ("Parter" %in% names(data_meta))
+      data_meta <- rename(data_meta, case_parties = Parter)
+
+    if ("Saksgang" %in% names(data_meta))
+      data_meta <- rename(data_meta, case_history = Saksgang)
+
+    if ("Sammendrag" %in% names(data_meta))
+      data_meta <- rename(data_meta, case_summary = Sammendrag)
+
+    if ("Stikkord" %in% names(data_meta))
+      data_meta <- rename(data_meta, case_keywords = Stikkord)
 
     if (meta_only) return(list(data_meta = data_meta))
 
@@ -150,8 +176,8 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
       dplyr::mutate(text = paste0(text, collapse = " ")) %>%
       dplyr::filter(!duplicated(text)) %>%
       dplyr::ungroup() %>%
-      rename(par_text = text,
-             par_paragraph = paragraph)
+      dplyr::rename(par_text = text,
+                    par_paragraph = paragraph)
 
     return(list(data_case = data_case, data_references = data_references))
   }

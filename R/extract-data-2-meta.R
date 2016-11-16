@@ -94,7 +94,7 @@ extract_data_judges <- function(data_case, match_judges = TRUE) {
       dplyr::mutate(judge_name = strsplit(judge_name, " ")) %>%
       tidyr::unnest()
 
-    if (match_judges) {
+    if (match_judges & nrow(judges) > 1) {
       judges_elligable <- domstolr::judges %>%
         filter(!(is.na(start) & is.na(end)),
                ifelse(is.na(start), TRUE, start < judges$case_date[1]),

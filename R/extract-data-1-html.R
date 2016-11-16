@@ -88,17 +88,18 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
       ind <- page_ind[x]
       if (!is.na(ind)) {
         nshift <- ifelse(ind == 1, 1, 2)
+        .case_data <- .case_data_org
         .case_data <- .case_data %>%
           dplyr::filter(paragraph != ind) %>%
           dplyr::mutate(paragraph = ifelse(paragraph %in% (ind + 1):max(paragraph), paragraph - nshift, paragraph)) %>%
           dplyr::group_by(paragraph) %>%
-          dplyr::summarize(paragraph_org = list(paragraph_org),
+          dplyr::summarize(paragraph_org = ifelse(length(paragraph_org) > 1, paragraph_org, list(paragraph_org)),
                            text = paste0(text, collapse = " ")) %>%
-          dplyr::filter(paragraph != ind) %>%
-          dplyr::mutate(paragraph = ifelse(paragraph %in% (ind + 1):max(paragraph), paragraph - nshift, paragraph)) %>%
-          dplyr::group_by(paragraph) %>%
-          dplyr::summarize(paragraph_org = list(paragraph_org),
-                           text = paste0(text, collapse = " ")) %>%
+          ## dplyr::filter(paragraph != ind) %>%
+          ## dplyr::mutate(paragraph = ifelse(paragraph %in% (ind + 1):max(paragraph), paragraph - nshift, paragraph)) %>%
+          ## dplyr::group_by(paragraph) %>%
+          ## dplyr::summarize(paragraph_org = ifelse(length(paragraph_org) > 1, paragraph_org, list(paragraph_org)),
+          ##                  text = paste0(text, collapse = " ")) %>%
           dplyr::ungroup() %>%
           dplyr::mutate(paragraph_org = lapply(paragraph_org, function(x) unlist(x)))
         page_ind <- page_ind - nshift

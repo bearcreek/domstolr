@@ -63,7 +63,6 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
                     date_min = min(data_cases$case_date),
                     date_max = max(data_cases$case_date))
 
-
   out <- list(meta = data_meta,
               data_cases = data_cases,
               data_paragraphs = data_paragraphs,

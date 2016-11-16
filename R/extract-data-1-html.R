@@ -88,7 +88,6 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
       ind <- page_ind[x]
       if (!is.na(ind)) {
         nshift <- ifelse(ind == 1, 1, 2)
-        .case_data <- .case_data_org
         .case_data <- .case_data %>%
           dplyr::filter(paragraph != ind) %>%
           dplyr::mutate(paragraph = ifelse(paragraph %in% (ind + 1):max(paragraph), paragraph - nshift, paragraph)) %>%

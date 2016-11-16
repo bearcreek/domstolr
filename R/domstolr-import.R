@@ -67,6 +67,7 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
   out <- list(meta = data_meta,
               data_cases = data_cases,
               data_paragraphs = data_paragraphs,
+              data_references = data_references,
               data_parties = data_parties,
               data_proceedings = data_proceedings,
               data_judges = data_judges,

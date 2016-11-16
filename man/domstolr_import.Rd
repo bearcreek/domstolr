@@ -6,7 +6,7 @@
 \usage{
 domstolr_import(file = NULL, directory = NULL, regex = ".*.html$",
   recursive = TRUE, meta_only = FALSE, match_judges = TRUE,
-  verbose = FALSE)
+  verbose = TRUE)
 }
 \arguments{
 \item{file}{Single file to import.}
@@ -27,7 +27,7 @@ Import selections downloaded as html from Lovdata Pro (C)
 \examples{
 \dontrun{
 domstol_data <- domstolr_import(directiory = "data/")
-save(data, file = "domstol_data.RData")
+save(domstol_data, file = "domstol_data.RData")
 }
 }
 \keyword{domstolr}

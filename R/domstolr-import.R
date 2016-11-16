@@ -6,7 +6,7 @@
 #' @importFrom rvest html_nodes html_table
 #' @importFrom xml2 xml_find_all read_html
 #' @importFrom tidyr spread fill
-#' @importFrom dplyr rename bind_rows group_by mutate filter ungroup
+#' @importFrom dplyr rename bind_rows group_by mutate filter ungroup matches
 #' @importFrom readr read_lines
 #' @importFrom magrittr %>%
 #'
@@ -37,60 +37,71 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
 
   if (meta_only) {
     out <- as.data.frame(bind_rows(data_all))
-    class(out) <- c("data.frame", "domstolr")
     return(out)
   }
 
+  data_paragraphs <- lapply(data_all, function(x) x$data_case) %>% bind_rows()
+  data_references <- lapply(data_all, function(x) x$data_references) %>% bind_rows()
+  data_parties <- lapply(data_all, function(x) x$data_parties) %>% bind_rows()
+  data_proceedings <- lapply(data_all, function(x) x$data_proceedings) %>% bind_rows()
+  data_judges <- lapply(data_all, function(x) x$data_judges) %>% bind_rows()
+  data_keywords <- lapply(data_all, function(x) x$data_keywords) %>% bind_rows()
 
-  data_paragraph <- data_all$data_case
 
-  data_case <- data_all$data_case %>%
-    group_by(publisert, forfatter, instans, parter, publisert, saksgang, sammendrag, stikkord, part_a, part_b, dom, kjennelse, type) %>%
-    summarize(text = paste0(tekst, collapse = " ")) %>%
-    ungroup()
+  casevars <- grep("^case_", names(data_paragraphs), value = TRUE)
+  data_cases <- data_paragraphs %>%
+    dplyr::group_by_(.dots = casevars) %>%
+    dplyr::summarize(case_text = paste0(par_text, collapse = " ")) %>%
+    dplyr::ungroup()
+
+  data_meta <- list(imported_on = Sys.time(),
+                    file = file,
+                    meta_only = meta_only,
+                    match_judges = match_judges,
+                    n_cases = nrow(data_cases),
+                    n_judges = length(unique(data_judges$judge_name)),
+                    date_min = min(data_cases$case_date),
+                    date_max = max(data_cases$case_date))
 
 
+  out <- list(meta = data_meta,
+              data_cases = data_cases,
+              data_paragraphs = data_paragraphs,
+              data_parties = data_parties,
+              data_proceedings = data_proceedings,
+              data_judges = data_judges,
+              data_keywords = data_keywords)
   class(out) <- "domstolr"
 
-  meta <- list(imported_on = Sys.time(),
-               file = file,
-               meta_only = meta_only,
-               match_judges = match_judges)
-
-  ## Number of cases,
-
-  str(out)
-
-  out <- lapply(data_all, function(x) x$data_case)
-  out <- dplyr::bind_rows(out)
-
-  data_references <- lapply(data_all, function(x) x[[2]])
-  meta_data <- lapply(1:length(data_references[[1]]), function(x) lapply(data_references, function(y) y[[x]]))
-  meta_data <- lapply(meta_data, function(x) as.data.frame(bind_rows(x)))
-  names(meta_data) <- names(data_references[[1]])
-  attr(out, "meta_data") <- meta_data
-
-  class(out) <- c("data.frame", "domstolr")
   return(out)
 }
 
-## print.domstolr <- function(data) {
-##   cat("Norwegian Supreme Court Data (domstolr)\n", append = TRUE)
-##   cat(paste0("Cases: ", length(unique(data$publisert)), "\n"))
-##   cat(paste0("Date range (min, max): ", min(data$dato), ", ", max(data$dato), "\n"))
-##   cat(paste0("Judges: ", length(unique(attr(data, "meta_data")$data_judges$judge)), "\n"))
-## }
+## Print and plot methods
+print.domstolr <- function(data) {
+  dta <- gsub("data_", "", names(data)[grep("data_", names(data))])
+  cat("Norwegian Supreme Court Data (domstolr)\n", append = TRUE)
+  cat(paste0("N Files: ",  length(data$meta$file), "\n"))
+  cat(paste0("N Cases: ", data$meta$n_cases, "\n"))
+  cat(paste0("N Judges: ", data$meta$n_judges, "\n"))
+  cat(paste0("Min date: ", data$meta$date_min, "\n"))
+  cat(paste0("Max date: ", data$meta$date_max, "\n"))
+  cat(paste0("Available data: ", paste0(dta, collapse = ", "), "\n"))
+  cat(paste0("(run get_*data*() to extract the df, e.g., get_", dta[1], "().)"))
+  cat("\n")
+}
 
-## plot.domstolr <- function(data) {
-##   hist_data <- data$dato[!duplicated(data$publisert)]
-##   hist(x = hist_data,
-##        breaks = "q",
-##        freq = TRUE,
-##        main = "Number of cases by quarter",
-##        xlab = "Date",
-##        ylab = "Number of cases")
-## }
+plot.domstolr <- function(data) {
+  hist_data <- as.Date(data$data_cases$case_date)
+  brks <- ifelse(length(hist_data) > 500, "q", "month")
+  hist(x = hist_data,
+       breaks = brks,
+       freq = TRUE,
+       main = paste0("Number of cases by ", ifelse(brks == "q", "quarter", "month")),
+       xlab = "Date",
+       ylab = "Number of cases")
+}
 
+## Parse function ran on file
 extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges = TRUE) {
 
   ## Split the html file into separate html snippets for each case.
@@ -121,22 +132,26 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
              case_parties = Parter,
              case_history = Saksgang,
              case_summary = Sammendrag,
-             case_keywords = Stikkord)
+             case_keywords = Stikkord) %>%
+      mutate(case_date = as.Date(case_date))
 
     if (meta_only) return(list(data_meta = data_meta))
 
     data_extracted_inner <- extract_data_html(.case, data_meta, all_tables, verbose)
 
-    data_references <- lapply(data_extracted_inner, attr, which = ".case_references") %>%
+    data_references <- attr(data_extracted_inner, which = ".case_references") %>%
       dplyr::bind_rows() %>%
-      dplyr::mutate(publisert = data_meta$Publisert)
+      dplyr::mutate(case_citation = data_meta$case_citation)
 
-    data_case <- dplyr::bind_rows(data_extracted_inner) %>%
-      tidyr::fill(avsnitt) %>%
-      dplyr::group_by(avsnitt) %>%
-      dplyr::mutate(tekst = paste0(tekst, collapse = " ")) %>%
-      dplyr::filter(!duplicated(tekst)) %>%
-      dplyr::ungroup()
+    data_case <- data_extracted_inner %>%
+      dplyr::bind_rows() %>%
+      tidyr::fill(paragraph) %>%
+      dplyr::group_by(paragraph) %>%
+      dplyr::mutate(text = paste0(text, collapse = " ")) %>%
+      dplyr::filter(!duplicated(text)) %>%
+      dplyr::ungroup() %>%
+      rename(par_text = text,
+             par_paragraph = paragraph)
 
     return(list(data_case = data_case, data_references = data_references))
   }
@@ -145,21 +160,13 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
                                 .case = all_cases,
                                 more.args = list(meta_only = meta_only, verbose = verbose))
 
-  if (verbose) message("\nFinished going through the html. Now extracting additional data.\n", appendLF = FALSE)
+  if (verbose) message(paste("\nFinished going through the html.",
+                             "Now extracting additional data.\n"),
+                       appendLF = FALSE)
 
-  ## Extract and clean text data
+  ## Extract and clean case/par data and references
   data_case <- lapply(data_extracted, function(x) x$data_case) %>% bind_rows()
-  names(data_case) <- gsub(" ", "_", tolower(names(data_case)))
-  data_case$dato <- as.Date(data_case$dato)
-
-  ## Extract and clean reference data
   data_references <- lapply(data_extracted, function(x) x$data_references) %>% bind_rows()
-  names(data_references) <- gsub(" ", "_", tolower(names(data_references)))
-
-  ## ## Extract and clean case-level data
-  ## data_meta <- lapply(data_extracted, function(x) x$data_meta) %>% bind_rows()
-  ## names(data_meta) <- gsub(" ", "_", tolower(names(data_meta)))
-  ## data_meta$dato <- as.Date(data_meta$dato)
 
   ## Extract additional meta data from the text and references.
   ##

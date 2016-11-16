@@ -1,12 +1,13 @@
-#' Extract data from the html code
-#'
-#' Takes the html code from one case and extracts text and
-#' references. The html must be parsed differently depending on when
-#' the case is from.
-#'
-#' @importFrom rvest html_text html_attr
-#' @importFrom dplyr data_frame mutate bind_cols bind_rows group_by filter summarize ungroup
-#' @importFrom xml2 xml_find_all
+## ' Extract data from the html code
+## '
+## ' Takes the html code from one case and extracts text and
+## ' references. The html must be parsed differently depending on when
+## ' the case is from.
+## '
+## ' @importFrom rvest html_text html_attr
+## ' @importFrom dplyr data_frame mutate bind_cols bind_rows group_by filter summarize ungroup
+## ' @importFrom xml2 xml_find_all
+
 extract_data_html <- function(.case, data_meta, all_tables, verbose) {
 
   if (verbose) message(".", appendLF = FALSE)
@@ -88,19 +89,16 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
       if (!is.na(ind)) {
         nshift <- ifelse(ind == 1, 1, 2)
         .case_data <- .case_data %>%
-<<<<<<< HEAD
           dplyr::filter(paragraph != ind) %>%
           dplyr::mutate(paragraph = ifelse(paragraph %in% (ind + 1):max(paragraph), paragraph - nshift, paragraph)) %>%
           dplyr::group_by(paragraph) %>%
           dplyr::summarize(paragraph_org = list(paragraph_org),
                            text = paste0(text, collapse = " ")) %>%
-=======
-          dplyr::filter(avsnitt != ind) %>%
-          dplyr::mutate(avsnitt = ifelse(avsnitt %in% (ind + 1):max(avsnitt), avsnitt - nshift, avsnitt)) %>%
-          dplyr::group_by(avsnitt) %>%
-          dplyr::summarize(avsnitt_org = list(avsnitt_org),
-                           tekst = paste0(tekst, collapse = " ")) %>%
->>>>>>> 00ea19b3a8a7d21d94303f8c1c0be37fe4e5e2a2
+          dplyr::filter(paragraph != ind) %>%
+          dplyr::mutate(paragraph = ifelse(paragraph %in% (ind + 1):max(paragraph), paragraph - nshift, paragraph)) %>%
+          dplyr::group_by(paragraph) %>%
+          dplyr::summarize(paragraph_org = list(paragraph_org),
+                           text = paste0(text, collapse = " ")) %>%
           dplyr::ungroup() %>%
           dplyr::mutate(paragraph_org = lapply(paragraph_org, function(x) unlist(x)))
         page_ind <- page_ind - nshift
@@ -110,10 +108,8 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
     }
   }
   .case_data <- suppressWarnings(cbind(.case_data, data_meta))
-
   paragraph_link <- dplyr::select(.case_data, paragraph, paragraph_org)
   if (is.list(.case_data$paragraph_org)) paragraph_link <- tidyr::unnest(paragraph_link)
-
   if (get_references) {
     .case_references <- lapply(1:length(keep), function(x)
       .extract_references(nodes[keep][x], x, "law")) %>%

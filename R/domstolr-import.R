@@ -248,7 +248,6 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
   data_case <- lapply(data_extracted, function(x) x$data_case) %>% bind_rows()
   data_references <- lapply(data_extracted, function(x) x$data_references) %>% bind_rows()
 
-
   ## Extract additional meta data from the text and references.
   ##
   ## These functions are in a separate file

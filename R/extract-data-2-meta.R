@@ -17,12 +17,13 @@ add_data_parties <- function(data_case) {
 }
 
 extract_data_parties <- function(data_case) {
+  .dt <- filter(data_case, !duplicated(case_citation))
   parties <- lapply(c("case_appellant", "case_respondent"), function(y) {
-    dplyr::data_frame(case_citation = data_case$case_citation,
-                      case_date = data_case$case_date,
+    dplyr::data_frame(case_citation = .dt$case_citation,
+                      case_date = .dt$case_date,
                       prt_type = gsub("case_", "", y),
-                      prt_party = data_case[[y]],
-                      prt_lawyer = lapply(strsplit(data_case[[y]], "\\("),
+                      prt_party = .dt[[y]],
+                      prt_lawyer = lapply(strsplit(.dt[[y]], "\\("),
                                           function(x) gsub(").*$", "", x[grep("\\)", x)]))) %>%
       tidyr::unnest(prt_lawyer)
   })
@@ -55,9 +56,10 @@ add_data_case_type <- function(data_case) {
 
 ## Case Proceedings (case flow/saksgang)
 extract_data_case_proceedings <- function(data_case) {
-  saksgang <- dplyr::data_frame(case_citation = data_case$case_citation,
-                                case_date = data_case$case_date,
-                                proc_instance = strsplit(data_case$case_history, " -"),
+  .dt <- filter(data_case, !duplicated(case_citation))
+  saksgang <- dplyr::data_frame(case_citation = .dt$case_citation,
+                                case_date = .dt$case_date,
+                                proc_instance = strsplit(.dt$case_history, " -"),
                                 proc_lineage = sapply(proc_instance, function(x) 1:length(x))) %>%
     tidyr::unnest() %>%
     dplyr::mutate(proc_instance = gsub("^ +| +$", "", proc_instance))
@@ -115,9 +117,10 @@ extract_data_judges <- function(data_case, match_judges = TRUE) {
 
 ## Keywords
 extract_data_keywords <- function(data_case) {
-  keywords <- dplyr::data_frame(case_citation = data_case$case_citation,
-                                case_date =  data_case$case_date,
-                                keyword = strsplit(data_case$case_keywords, "\\. *")) %>%
+  .dt <- filter(data_case, !duplicated(case_citation))
+  keywords <- dplyr::data_frame(case_citation = .dt$case_citation,
+                                case_date =  .dt$case_date,
+                                keyword = strsplit(.dt$case_keywords, "\\. *")) %>%
     tidyr::unnest()
   return(keywords)
 }

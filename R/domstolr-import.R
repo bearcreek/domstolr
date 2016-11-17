@@ -3,23 +3,29 @@
 #' Import selections downloaded as html from Lovdata Pro (C)
 #'
 #' @importFrom parallelMap parallelMap
-#' @importFrom rvest html_nodes html_table
+#' @importFrom rvest html_nodes html_table html_text html_attr
 #' @importFrom xml2 xml_find_all read_html
-#' @importFrom tidyr spread fill
-#' @importFrom dplyr rename bind_rows group_by mutate filter ungroup matches
+#' @importFrom tidyr spread fill unnest
+#' @importFrom dplyr rename bind_rows group_by mutate filter ungroup
+#'   matches data_frame bind_cols summarize slice select
 #' @importFrom readr read_lines
+#' @importFrom fuzzyjoin stringdist_left_join
 #' @importFrom magrittr %>%
 #'
 #' @param file Single file to import.
 #' @param directory Directory to import files from.
-#' @param regex Regular Expression to use when searching for files within directory. Default is to extract all html files.
-#' @param recursive If TRUE then it will also search for files within subfolders of the provided directory.
-#' @param meta_only If TRUE it will only return the data within the header table of each case.
-#' @param verbose If TRUE it will print out dots for each parsed case to signal how far the function have come.
+#' @param regex Regular Expression to use when searching for files
+#'   within directory. Default is to extract all html files.
+#' @param recursive If TRUE then it will also search for files within
+#'   subfolders of the provided directory.
+#' @param meta_only If TRUE it will only return the data within the
+#'   header table of each case.
+#' @param verbose If TRUE it will print out dots for each parsed case
+#'   to signal how far the function have come.
 #' @keywords domstolr lovdata
 #'
 #' @examples
-#'\dontrun{
+#' \dontrun{
 #' domstol_data <- domstolr_import(directiory = "data/")
 #' save(domstol_data, file = "domstol_data.RData")
 #' }
@@ -36,7 +42,7 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
   data_all <- lapply(file, extract_data, meta_only = meta_only, verbose = verbose, match_judges = match_judges)
 
   if (meta_only) {
-    out <- as.data.frame(bind_rows(data_all))
+    out <- as.data.frame(dplyr::bind_rows(data_all))
     return(out)
   }
 
@@ -46,7 +52,6 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
   data_proceedings <- lapply(data_all, function(x) x$data_proceedings) %>% bind_rows()
   data_judges <- lapply(data_all, function(x) x$data_judges) %>% bind_rows()
   data_keywords <- lapply(data_all, function(x) x$data_keywords) %>% bind_rows()
-
 
   casevars <- grep("^case_", names(data_paragraphs), value = TRUE)
   data_cases <- data_paragraphs %>%
@@ -63,13 +68,59 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
                     date_min = min(data_cases$case_date),
                     date_max = max(data_cases$case_date))
 
+  data_list <- list(
+    list(name = "cases",
+         unit = "case",
+         prefix = "case_",
+         nobs = nrow(data_cases),
+         nvars = ncol(data_cases),
+         vars = paste(names(data_cases), collapse = ", ")),
+    list(name = "paragraphs",
+         unit = "paragraph of text (within case)",
+         prefix = "par_",
+         nobs = nrow(data_paragraphs),
+         nvars = ncol(data_paragraphs),
+         vars = paste(names(data_paragraphs), collapse = ", ")),
+    list(name = "references",
+         unit = "law or case reference (within paragraph of text within case)",
+         prefix = "ref_",
+         nobs = nrow(data_references),
+         nvars = ncol(data_references),
+         vars = ""),
+    list(name = "judges",
+         unit = "judge (within case)",
+         prefix = "judge_",
+         nobs = nrow(data_judges),
+         nvars = ncol(data_judges),
+         vars = paste(names(data_judges), collapse = ", ")),
+    list(name = "parties",
+         unit = "party (within case)",
+         prefix = "prt_",
+         nobs = nrow(data_parties),
+         nvars = ncol(data_parties),
+         vars = paste(names(data_parties), collapse = ", ")),
+    list(name = "proceedings",
+         unit = "institution (within history of case)",
+         prefix = "proc_",
+         nobs = nrow(data_proceedings),
+         nvars = ncol(data_proceedings),
+         vars = paste(names(data_proceedings), collapse = ", ")),
+    list(name = "keywords",
+         unit = "keyword (within case)",
+         prefix = "kw_",
+         nobs = nrow(data_keywords),
+         nvars = ncol(data_keywords),
+         vars = paste(names(data_keywords), collapse = ", "))
+  )
+
   out <- list(meta = data_meta,
+              meta_data = data_list,
               data_cases = data_cases,
               data_paragraphs = data_paragraphs,
               data_references = data_references,
+              data_judges = data_judges,
               data_parties = data_parties,
               data_proceedings = data_proceedings,
-              data_judges = data_judges,
               data_keywords = data_keywords)
   class(out) <- "domstolr"
 
@@ -77,19 +128,24 @@ domstolr_import <- function(file = NULL, directory = NULL, regex = ".*.html$", r
 }
 
 ## Print and plot methods
+#' @export
 print.domstolr <- function(data) {
-  dta <- gsub("data_", "", names(data)[grep("data_", names(data))])
-  cat("Norwegian Supreme Court Data (domstolr)\n", append = TRUE)
-  cat(paste0("N Files: ",  length(data$meta$file), "\n"))
-  cat(paste0("N Cases: ", data$meta$n_cases, "\n"))
-  cat(paste0("N Judges: ", data$meta$n_judges, "\n"))
-  cat(paste0("Min date: ", data$meta$date_min, "\n"))
-  cat(paste0("Max date: ", data$meta$date_max, "\n"))
-  cat(paste0("Available data: ", paste0(dta, collapse = ", "), "\n"))
-  cat(paste0("(run get_*data*() to extract the df, e.g., get_", dta[1], "().)"))
-  cat("\n")
+  out_1 <- paste0("Norwegian Supreme Court Data (domstolr class)\n",
+                  "files (n): ", prettyNum(length(data$meta$file), bigmark = ",", scientific = FALSE), "\n",
+                  "cases (n): ", prettyNum(data$meta$n_cases, bigmark = ",", scientific = FALSE), "\n",
+                  "dates (min, max): ", data$meta$date_min, ", ", data$meta$date_max, "\n",
+                  "data available: \n")
+  out_2 <- lapply(data$meta_data, function(x) {
+    paste0(x$name, " (", paste0("get_", x$name, "()"), ")\n",
+           "    unit: ", x$unit, "\n",
+           "    obs: ", prettyNum(x$nobs, big.mark = ",", scientific = FALSE),
+           ", vars: ", prettyNum(x$nvars, bigmark = ",", scientific = FALSE)) #,
+  })
+  cat(out_1)
+  for (i in seq_along(out_2)) cat(paste0("  ", out_2[[i]], "\n"))
 }
 
+#' @export
 plot.domstolr <- function(data) {
   hist_data <- as.Date(data$data_cases$case_date)
   brks <- ifelse(length(hist_data) > 500, "q", "month")
@@ -138,7 +194,7 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
       if (grepl("[Uu]datert|^1967-00-00$", data_meta$case_date))
         data_meta <- mutate(data_meta, case_date = paste0(substr(case_date, 1, 4), "-1-1"))
 
-        data_meta <- mutate(data_meta, case_date = as.Date(case_date))
+      data_meta <- mutate(data_meta, case_date = as.Date(case_date))
     }
     if ("Publisert" %in% names(data_meta))
       data_meta <- rename(data_meta, case_citation = Publisert)
@@ -165,21 +221,19 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
 
     data_extracted_inner <- extract_data_html(.case, data_meta, all_tables, verbose)
 
-    data_references <- attr(data_extracted_inner, which = ".case_references") %>%
-      dplyr::bind_rows() %>%
-      dplyr::mutate(case_citation = data_meta$case_citation)
+    out <- list(data_case = data_extracted_inner$data_case,
+                data_references = data_extracted_inner$data_references)
+    ## %>%
+    ##   dplyr::bind_rows() %>%
+    ##   tidyr::fill(paragraph) %>%
+    ##   dplyr::group_by(paragraph) %>%
+    ##   dplyr::mutate(text = paste0(text, collapse = " ")) %>%
+    ##   dplyr::filter(!duplicated(text)) %>%
+    ##   dplyr::ungroup() %>%
+    ##   dplyr::rename(par_text = text,
+    ##                 par_paragraph = paragraph)
 
-    data_case <- data_extracted_inner %>%
-      dplyr::bind_rows() %>%
-      tidyr::fill(paragraph) %>%
-      dplyr::group_by(paragraph) %>%
-      dplyr::mutate(text = paste0(text, collapse = " ")) %>%
-      dplyr::filter(!duplicated(text)) %>%
-      dplyr::ungroup() %>%
-      dplyr::rename(par_text = text,
-                    par_paragraph = paragraph)
-
-    return(list(data_case = data_case, data_references = data_references))
+    return(out)
   }
 
   data_extracted <- parallelMap(extract_data_case,
@@ -193,6 +247,7 @@ extract_data <- function(file, meta_only = FALSE, verbose = FALSE, match_judges 
   ## Extract and clean case/par data and references
   data_case <- lapply(data_extracted, function(x) x$data_case) %>% bind_rows()
   data_references <- lapply(data_extracted, function(x) x$data_references) %>% bind_rows()
+
 
   ## Extract additional meta data from the text and references.
   ##

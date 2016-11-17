@@ -13,13 +13,17 @@ domstolr_import(file = NULL, directory = NULL, regex = ".*.html$",
 
 \item{directory}{Directory to import files from.}
 
-\item{regex}{Regular Expression to use when searching for files within directory. Default is to extract all html files.}
+\item{regex}{Regular Expression to use when searching for files
+within directory. Default is to extract all html files.}
 
-\item{recursive}{If TRUE then it will also search for files within subfolders of the provided directory.}
+\item{recursive}{If TRUE then it will also search for files within
+subfolders of the provided directory.}
 
-\item{meta_only}{If TRUE it will only return the data within the header table of each case.}
+\item{meta_only}{If TRUE it will only return the data within the
+header table of each case.}
 
-\item{verbose}{If TRUE it will print out dots for each parsed case to signal how far the function have come.}
+\item{verbose}{If TRUE it will print out dots for each parsed case
+to signal how far the function have come.}
 }
 \description{
 Import selections downloaded as html from Lovdata Pro (C)

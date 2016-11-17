@@ -11,16 +11,17 @@
 ## Case parties
 add_data_parties <- function(data_case) {
   data_case <- data_case %>%
-  dplyr::mutate(case_appellant = gsub(" mot .+$", "", data_case$case_parties),
-                case_respondent = gsub("^.+ mot ", "", data_case$case_parties))
+    dplyr::mutate(case_appellant = gsub(" mot .+$", "", data_case$case_parties),
+                  case_respondent = gsub("^.+ mot ", "", data_case$case_parties))
   return(data_case)
 }
 
 extract_data_parties <- function(data_case) {
   parties <- lapply(c("case_appellant", "case_respondent"), function(y) {
     dplyr::data_frame(case_citation = data_case$case_citation,
-                      prt_party = data_case[[y]],
+                      case_date = data_case$case_date,
                       prt_type = gsub("case_", "", y),
+                      prt_party = data_case[[y]],
                       prt_lawyer = lapply(strsplit(data_case[[y]], "\\("),
                                           function(x) gsub(").*$", "", x[grep("\\)", x)]))) %>%
       tidyr::unnest(prt_lawyer)
@@ -41,13 +42,6 @@ add_data_decision_type <- function(data_case) {
   data_case <- data_case %>%
     mutate(case_decision_type = as.character(type))
 
-  ## data_case <- data_case %>%
-  ##   dplyr::mutate(case_decision_type = type) %>%
-  ##   tidyr::unnest(case_decision_type) %>%
-  ##   dplyr::mutate(case_type_value = 1) %>%
-  ##   tidyr::spread(case_decision_type, case_type_value, fill = 0) %>%
-  ##   mutate(case_decision_type = ifelse(
-
   return(data_case)
 }
 
@@ -62,10 +56,11 @@ add_data_case_type <- function(data_case) {
 ## Case Proceedings (case flow/saksgang)
 extract_data_case_proceedings <- function(data_case) {
   saksgang <- dplyr::data_frame(case_citation = data_case$case_citation,
-                                hst_instance = strsplit(data_case$case_history, " -"),
-                                hst_lineage = sapply(hst_instance, function(x) 1:length(x))) %>%
+                                case_date = data_case$case_date,
+                                proc_instance = strsplit(data_case$case_history, " -"),
+                                proc_lineage = sapply(proc_instance, function(x) 1:length(x))) %>%
     tidyr::unnest() %>%
-    dplyr::mutate(hst_instance = gsub("^ +| +$", "", hst_instance))
+    dplyr::mutate(proc_instance = gsub("^ +| +$", "", proc_instance))
   return(saksgang)
 }
 
@@ -121,6 +116,7 @@ extract_data_judges <- function(data_case, match_judges = TRUE) {
 ## Keywords
 extract_data_keywords <- function(data_case) {
   keywords <- dplyr::data_frame(case_citation = data_case$case_citation,
+                                case_date =  data_case$case_date,
                                 keyword = strsplit(data_case$case_keywords, "\\. *")) %>%
     tidyr::unnest()
   return(keywords)
@@ -250,10 +246,10 @@ add_data_section <- function(data_case, data_judges, match_judges = TRUE) {
     }
 
     data <- tidyr::fill(data, par_section) %>%
-      select(-case_have_vote)
+      dplyr::select(-case_have_vote)
 
+    ## Verify par_judge and pnr/jnr using sep data
     if (match_judges) {
-      ## Verify section judge and pnr/jnr
       judges_elligable <- domstolr::judges %>%
         filter(!(is.na(start) & is.na(end)),
                ifelse(is.na(start), TRUE, start < data$case_date[1]),

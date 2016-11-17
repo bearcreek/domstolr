@@ -26,59 +26,76 @@ extract_data_html <- function(.case, data_meta, all_tables, verbose) {
 ## Cases after 2003 are split into tables where each table is a
 ## official paragraph within the court decision
 extract_data_html.sc_after_2003 <- function(.case, data_meta, all_tables, ...) {
-  get_references <- TRUE
+
   if (length(all_tables) == 1) {
-    .case_data <- dplyr::data_frame(paragraph = 0,
-                                    text = "")
-    .case_data <- suppressWarnings(cbind(.case_data, data_meta))
-    attr(.case_data, ".case_references") <- NULL
-    return(.case_data)
+    data_case <- dplyr::data_frame(par_paragraph = 0,
+                            par_text = "")
+    data_case <- suppressWarnings(cbind(data_case, data_meta))
+    data_references <- NULL
+    out <- list(data_case = data_case,
+                data_references = data_references)
+    return(out)
   }
-  .case_data <- lapply(all_tables[2:length(all_tables)], function(.table) {
-    if (is.null(.table)) return(NULL)
-    .text <- rvest::html_text(.table)
-    .inner_case_data <- dplyr::data_frame(paragraph = gsub("^\\((\\d+)\\).+", "(\\1)", .text),
-                                          text = gsub("^\\(\\d+\\)", "", .text)) %>%
-      dplyr::mutate(paragraph = ifelse(paragraph == text, NA, paragraph),
-                    paragraph = as.numeric(gsub("[^0-9.-]+", "", as.character(paragraph)))) %>%
+
+  data_all <- lapply(all_tables[2:length(all_tables)], function(.table) {
+
+    if (is.null(.table)) return(NULL) # if is.null() means no content whatsoever
+
+    ## Get text + paragraph
+    text_inner <- rvest::html_text(.table)
+    data_case_inner <- dplyr::data_frame(par_paragraph = gsub("^\\((\\d+)\\).+", "(\\1)", text_inner),
+                                  par_text = gsub("^\\(\\d+\\)", "", text_inner)) %>%
+      dplyr::mutate(par_paragraph = ifelse(par_paragraph == par_text, NA, par_paragraph),
+             par_paragraph = as.numeric(gsub("[^0-9.-]+", "", as.character(par_paragraph)))) %>%
       dplyr::bind_cols(data_meta)
-    if (get_references) {
-      .case_references <- .extract_references(.table, .inner_case_data$paragraph, "law")
-    } else {
-      .case_references <- NULL
-    }
-    attr(.inner_case_data, ".case_references") <- .case_references
-    return(.inner_case_data)
+
+    ## Get references
+    data_references_inner <- extract_references(.table, data_case_inner$par_paragraph) %>%
+      dplyr::mutate(case_citation = data_meta$case_citation,
+             case_date = data_meta$case_date)
+
+    out_inner <- list(data_case = data_case_inner,
+                      data_references = data_references_inner)
+    return(out_inner)
   })
-  return(.case_data)
+
+  data_case <- lapply(data_all, function(x) x$data_case) %>% bind_rows()
+  data_references <- lapply(data_all, function(x) x$data_references) %>% bind_rows()
+
+  out <- list(data_case = data_case,
+              data_references = data_references)
+
+  return(out)
 }
 
 ## Cases before 2003 are split in paragraphs (<p>), although not
 ## officially a paragraph we use these to denote e.g. what paragraph a
 ## reference where made
 extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) {
-  get_references <- TRUE
-  nodes <- xml2::xml_find_all(.case, ".//p[preceding-sibling::div[@align='center']] | .//table[preceding-sibling::div[@align='center']]")
-  .text <- rvest::html_text(nodes)
-  .text <- gsub("_", "", .text)
 
-  keep <- which(!(.text == "") & grepl("\\w", .text))
+  nodes <- xml2::xml_find_all(.case, ".//p[preceding-sibling::div[@align='center']] | .//table[preceding-sibling::div[@align='center']]")
+  text <- rvest::html_text(nodes)
+  text <- gsub("_", "", text)
+
+  keep <- which(!(text == "") & grepl("\\w", text))
   if (length(keep) == 0) {
-    .case_data <- dplyr::data_frame(paragraph = 0,
-                                    text = "")
-    .case_data <- suppressWarnings(cbind(.case_data, data_meta))
-    attr(.case_data, ".case_references") <- NULL
-    return(.case_data)
+    data_case <- dplyr::data_frame(par_paragraph = 0,
+                                   par_text = "")
+    data_case <- suppressWarnings(cbind(data_case, data_meta))
+    data_references <- NULL
+    out <- list(data_case = data_case,
+                data_references = data_references)
+    return(out)
   }
 
-  .case_data <- dplyr::data_frame(paragraph = 1:length(.text[keep]),
-                                  paragraph_org = 1:length(.text[keep]),
-                                  text = .text[keep])
+  data_case <- dplyr::data_frame(par_paragraph = 1:length(text[keep]),
+                                 par_paragraph_org = 1:length(text[keep]),
+                                 par_text = text[keep])
 
   ## If there are page numbers (e.g., "Side 1729") it probably means
   ## that the paragraph got cut off, so we glue the paragaph on each
   ## side together
-  page_ind <- grep("^Side *\\d+.*", .case_data$text)
+  page_ind <- grep("^Side *\\d+.*", data_case$par_text)
   page_ind <- page_ind[!is.na(page_ind)]
   page_ind_org <- page_ind
   if (!is.null(page_ind)) {
@@ -88,115 +105,122 @@ extract_data_html.sc_before_2003 <- function(.case, data_meta, all_tables, ...) 
       ind <- page_ind[x]
       if (!is.na(ind)) {
         nshift <- ifelse(ind == 1, 1, 2)
-        .case_data <- .case_data %>%
-          dplyr::filter(paragraph != ind) %>%
-          dplyr::mutate(paragraph = ifelse(paragraph %in% (ind + 1):max(paragraph), paragraph - nshift, paragraph)) %>%
-          dplyr::group_by(paragraph) %>%
-          dplyr::summarize(paragraph_org = ifelse(length(paragraph_org) > 1, paragraph_org, list(paragraph_org)),
-                           text = paste0(text, collapse = " ")) %>%
+        data_case <- data_case %>%
+          dplyr::filter(par_paragraph != ind) %>%
+          dplyr::mutate(par_paragraph = ifelse(par_paragraph %in% (ind + 1):max(par_paragraph), par_paragraph - nshift, par_paragraph)) %>%
+          dplyr::group_by(par_paragraph) %>%
+          dplyr::summarize(par_paragraph_org = ifelse(length(par_paragraph_org) > 1, par_paragraph_org, list(par_paragraph_org)),
+                           par_text = paste0(par_text, collapse = " ")) %>%
           ## dplyr::filter(paragraph != ind) %>%
           ## dplyr::mutate(paragraph = ifelse(paragraph %in% (ind + 1):max(paragraph), paragraph - nshift, paragraph)) %>%
           ## dplyr::group_by(paragraph) %>%
           ## dplyr::summarize(paragraph_org = ifelse(length(paragraph_org) > 1, paragraph_org, list(paragraph_org)),
           ##                  text = paste0(text, collapse = " ")) %>%
           dplyr::ungroup() %>%
-          dplyr::mutate(paragraph_org = lapply(paragraph_org, function(x) unlist(x)))
+          dplyr::mutate(par_paragraph_org = lapply(par_paragraph_org, function(x) unlist(x)))
         page_ind <- page_ind - nshift
       }
       x <- x + 1
       if (x > length(page_ind)) done <- TRUE
     }
   }
-  .case_data <- suppressWarnings(cbind(.case_data, data_meta))
-  paragraph_link <- dplyr::select(.case_data, paragraph, paragraph_org)
-  if (is.list(.case_data$paragraph_org)) paragraph_link <- tidyr::unnest(paragraph_link)
-  if (get_references) {
-    .case_references <- lapply(1:length(keep), function(x)
-      .extract_references(nodes[keep][x], x, "law")) %>%
-      dplyr::bind_rows()
-    if (nrow(.case_references) > 0) {  # correct paragraph after shift
-      .case_references$paragraph <- paragraph_link$paragraph[match(.case_references$paragraph, paragraph_link$paragraph_org)]
-    }
-  } else {
-    .case_references <- NULL
+  data_case <- suppressWarnings(cbind(data_case, data_meta))
+
+  ## To correct par_paragraph in references if paragraphs shifted
+  pl <- dplyr::select(data_case, par_paragraph, par_paragraph_org)
+  if (is.list(data_case$par_paragraph_org)) pl <- tidyr::unnest(pl)
+  data_case <- dplyr::select(data_case, -par_paragraph_org)
+
+  ## Get in-text references
+  data_references <- lapply(1:length(keep),
+                            function(x) extract_references(nodes[keep][x], x))
+  data_references <- data_references %>%
+    dplyr::bind_rows() %>%
+    dplyr::mutate(case_citation = data_meta$case_citation,
+           case_date = data_meta$case_date)
+  if (nrow(data_references) > 0) { # correct paragraph after shift
+    data_references <- data_references %>%
+      dplyr::mutate(par_paragraph = pl$par_paragraph[match(par_paragraph, pl$par_paragraph_org)])
   }
-  attr(.case_data, ".case_references") <- .case_references
-  .case_data <- select(.case_data, -paragraph_org)
-  return(.case_data)
+
+  out <- list(data_case = data_case,
+              data_references = data_references)
+  return(out)
 }
 
 ## Takes the html data and extracts the reference. References within
 ## the html code are always links (<href>).
-.extract_references <- function(node, avsnitt = 1, type) {
-  node <- node %>%
+extract_references <- function(node, par_paragraph = 1) {
+  link_node <- node %>%
     xml2::xml_find_all(".//a[preceding-sibling::span]")
-  ref_text <- rvest::html_text(node)
-  ref_link <- rvest::html_attr(node, "href")
+  ref_text <- rvest::html_text(link_node)
+  ref_link <- rvest::html_attr(link_node, "href")
 
-  if (type == "law") {
-    ## In-text references to prework
-    ref_link_pre <- ref_link[grep("/forarbeid/", ref_link)]
-    if (length(ref_link_pre) > 0) {
-      ref_pre <- dplyr::data_frame(type = "forarbeid",
-                                   lov = NA,
-                                   referanse = gsub(".*/forarbeid/(.+-\\d*-*\\d*-*\\d+).*", "\\1", ref_link_pre),
-                                   paragraph = gsub(".*/(s\\d*)$", "\\1", ref_link_pre),
-                                   tekst = ref_text[grep("/forarbeid/", ref_link)],
-                                   link = ref_link_pre) %>%
-        dplyr::mutate(paragraph = ifelse(paragraph == link, NA, paragraph),
-                      avsnitt = avsnitt)
-    } else {
-      ref_pre <- NULL
-    }
-    ## In-text references to regulations
-    ref_link_reg <- ref_link[grep("/forskrift/", ref_link)]
-    if (length(ref_link_reg) > 0) {
-      ref_reg <- dplyr::data_frame(type = "forskrift",
-                                   lov = NA,
-                                   referanse = gsub(".*/forskrift/(\\d+-\\d+-\\d+-*\\d*).*", "\\1", ref_link_reg),
-                                   paragraph = ifelse(grepl("§", ref_link_reg),
-                                                      gsub(".*(§.+)$", "\\1", ref_link_reg),
-                                                      NA),
-                                   tekst = ref_text[grep("/forskrift/", ref_link)],
-                                   link = ref_link_reg) %>%
-        dplyr::mutate(avsnitt = avsnitt)
-    } else {
-      ref_reg <- NULL
-    }
-    ## In-text references to law
-    ref_link_law <- ref_link[grep("/lov/", ref_link)]
-    if (length(ref_link_law) > 0) {
-      ref_law <- dplyr::data_frame(type = "lov",
-                                   lov = ifelse(gsub(".*\\d+/(\\w+)/.*", "\\1", ref_link_law) == ref_link_law,
-                                                "nlo", gsub(".*\\d+/(\\w+)/.*", "\\1", ref_link_law)),
-                                   referanse = gsub(".*/lov/(\\d+-\\d+-\\d+-*\\d*).*", "\\1", ref_link_law),
-                                   paragraph = ifelse(grepl("§", ref_link_law),
-                                                      gsub(".*(§\\d+).*", "\\1", ref_link_law),
-                                                      gsub(".*/(a.+)$", "\\1", ref_link_law)),
-                                   tekst = ref_text[grep("/lov/", ref_link)],
-                                   link = ref_link_law) %>%
-        dplyr::mutate(paragraph = ifelse(paragraph == link, NA, paragraph),
-                      avsnitt = avsnitt)
-    } else {
-      ref_law <- NULL
-    }
-    ref <- dplyr::bind_rows(ref_pre, ref_reg, ref_law)
-    return(ref)
-
-  } else if (type == "decision") {
-
-    ## In-text references for decisions
-    ref_link_dec <- ref_link[grep("/avgjorelse/", ref_link)]
-    if (length(ref_link_dec) > 0) {
-      ref_dec <- dplyr::data_frame(type = "avgjorelse",
-                                   sak = gsub("(.*)/.+$", "\\1", gsub("^.+avgjorelse/(.*)", "\\1", ref_link_dec)),
-                                   ref_avsnitt = gsub(".*/(.*)$", "\\1", gsub("^.+avgjorelse/(.*)", "\\1", ref_link_dec)),
-                                   tekst = ref_text[grep("/avgjorelse/", ref_link)],
-                                   link = ref_link_dec[grep("/avgjorelse/", ref_link)]) %>%
-        dplyr::mutate(ref_avsnitt = ifelse(sak == ref_avsnitt, NA, ref_avsnitt))
-    } else {
-      ref_dec <- NULL
-    }
-    return(ref_dec)
+  ## In-text references to prework
+  ref_link_pre <- ref_link[grep("/forarbeid/", ref_link)]
+  if (length(ref_link_pre) > 0) {
+    ref_pre <- dplyr::data_frame(ref_type = "prepwork",
+                          ref_type_no = "forarbeid",
+                          ref_law = NA,
+                          ref_reference = gsub(".*/forarbeid/(.+-\\d*-*\\d*-*\\d+).*", "\\1", ref_link_pre),
+                          ref_paragraph = gsub(".*/(s\\d*)$", "\\1", ref_link_pre),
+                          ref_text = ref_text[grep("/forarbeid/", ref_link)],
+                          ref_link = ref_link_pre) %>%
+      dplyr::mutate(ref_paragraph = ifelse(ref_paragraph == ref_link, NA, ref_paragraph))
+  } else {
+    ref_pre <- NULL
   }
+
+  ## In-text references to regulations
+  ref_link_reg <- ref_link[grep("/forskrift/", ref_link)]
+  if (length(ref_link_reg) > 0) {
+    ref_reg <- dplyr::data_frame(ref_type = "regulation",
+                          ref_type_no = "forskrift",
+                          ref_law = NA,
+                          ref_reference = gsub(".*/forskrift/(\\d+-\\d+-\\d+-*\\d*).*", "\\1", ref_link_reg),
+                          ref_paragraph = ifelse(grepl("§", ref_link_reg),
+                                                 gsub(".*(§.+)$", "\\1", ref_link_reg),
+                                                 NA),
+                          ref_text = ref_text[grep("/forskrift/", ref_link)],
+                          ref_link = ref_link_reg) %>%
+      dplyr::mutate(ref_paragraph = ifelse(ref_paragraph == ref_link, NA, ref_paragraph))
+  } else {
+    ref_reg <- NULL
+  }
+  ## In-text references to law
+  ref_link_law <- ref_link[grep("/lov/", ref_link)]
+  if (length(ref_link_law) > 0) {
+    ref_law <- dplyr::data_frame(ref_type = "law",
+                          ref_type_no = "lov",
+                          ref_law = ifelse(gsub(".*\\d+/(\\w+)/.*", "\\1", ref_link_law) == ref_link_law,
+                                           "nlo", gsub(".*\\d+/(\\w+)/.*", "\\1", ref_link_law)),
+                          ref_reference = gsub(".*/lov/(\\d+-\\d+-\\d+-*\\d*).*", "\\1", ref_link_law),
+                          ref_paragraph = ifelse(grepl("§", ref_link_law),
+                                                 gsub(".*(§\\d+).*", "\\1", ref_link_law),
+                                                 gsub(".*/(a.+)$", "\\1", ref_link_law)),
+                          ref_text = ref_text[grep("/lov/", ref_link)],
+                          ref_link = ref_link_law) %>%
+      dplyr::mutate(ref_paragraph = ifelse(ref_paragraph == ref_link, NA, ref_paragraph))
+  } else {
+    ref_law <- NULL
+  }
+
+  ## In-text references for decisions
+  ref_link_dec <- ref_link[grep("/avgjorelse/", ref_link)]
+  if (length(ref_link_dec) > 0) {
+    ref_dec <- dplyr::data_frame(ref_type = "case",
+                          ref_type_no = "avgjorelse",
+                          ref_case = gsub("(.*)/.+$", "\\1", gsub("^.+avgjorelse/(.*)", "\\1", ref_link_dec)),
+                          ref_case_paragraph = gsub(".*/(.*)$", "\\1", gsub("^.+avgjorelse/(.*)", "\\1", ref_link_dec)),
+                          ref_text = ref_text[grep("/avgjorelse/", ref_link)],
+                          ref_link = ref_link_dec[grep("/avgjorelse/", ref_link)]) %>%
+      dplyr::mutate(ref_case_paragraph = ifelse(ref_case == ref_case_paragraph, NA, ref_case_paragraph))
+  } else {
+    ref_dec <- NULL
+  }
+
+  data_references <- dplyr::bind_rows(ref_pre, ref_reg, ref_law, ref_dec) %>%
+    dplyr::mutate(par_paragraph = par_paragraph)
+
+  return(data_references)
 }

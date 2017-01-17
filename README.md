@@ -8,4 +8,6 @@ Authors:  Olav Bjørnebekk, Mikael Johannesson
 
 Tool for extracting text data from decisions handed down by the Norwegian Supreme Court. 
 
-This is very much a work in progress. If you have any questions or suggestions you are welcome to contact Olav (Olav.Bjornebekk@uib.no).
+This project is currently administered and maintained by researchers at the Department of Comparative Politics, University of Bergen. 
+
+Any questions and inquiries may be directed at me via email: olav.bjornebekk [at] gmail.com
